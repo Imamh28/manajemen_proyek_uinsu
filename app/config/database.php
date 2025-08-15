@@ -1,16 +1,13 @@
 <?php
-// Ganti nilai ini sesuai dengan konfigurasi server database Anda
-$host = '127.0.0.1'; // atau 'localhost'
-$user = 'root';
-$pass = '';
-$db   = 'manajemen_proyek_db';
+$host     = 'localhost';
+$dbname   = 'manajemen_proyek_db'; // typo di "pyoyek" pastikan itu benar
+$username = 'root';
+$password = ''; // default XAMPP tidak ada password
 
-$koneksi = mysqli_connect($host, $user, $pass, $db);
-
-// Cek koneksi
-if (!$koneksi) {
-    die("Koneksi gagal: " . mysqli_connect_error());
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    // Set error mode ke exception agar error bisa ditangkap
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Koneksi database gagal: " . $e->getMessage());
 }
-
-// Memulai session
-session_start();
