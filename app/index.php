@@ -1,10 +1,21 @@
-<?php require_once __DIR__ . '/config/init.php'; ?>
+<?php
+require_once __DIR__ . '/config/init.php';
+require_once __DIR__ . '/middleware/auth.php';
+include_once __DIR__ . '/partials/modal.php';
+?>
 <!doctype html>
 <html lang="en">
 
 <head>
     <?php include 'partials/header.php'; ?>
 </head>
+
+<!-- IMPORTANT, besides the login page always provide this code -->
+<!-- <script>
+    window.addEventListener("unload", function() {
+        navigator.sendBeacon('/auth/logout.php');
+    });
+</script> -->
 
 <body>
     <!--start wrapper-->

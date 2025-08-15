@@ -1,3 +1,4 @@
+<?php include 'partials/alert.php'; ?>
 <!-- start page content wrapper-->
 <div class="page-content-wrapper">
     <!-- start page content-->

@@ -1,9 +1,27 @@
+<!-- Function for visibilty password -->
+<script>
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('inputPassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.classList.remove('bi-eye');
+            eyeIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('bi-eye-slash');
+            eyeIcon.classList.add('bi-eye');
+        }
+    }
+</script>
 <!-- JS Files-->
 <script src="<?= $BASE_URL ?>assets/js/jquery.min.js"></script>
 <script src="<?= $BASE_URL ?>assets/plugins/simplebar/js/simplebar.min.js"></script>
 <script src="<?= $BASE_URL ?>assets/plugins/metismenu/js/metisMenu.min.js"></script>
 <script src="<?= $BASE_URL ?>assets/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+
 <!--plugins-->
 <script src="<?= $BASE_URL ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
 <script src="<?= $BASE_URL ?>assets/plugins/apexcharts-bundle/js/apexcharts.min.js"></script>

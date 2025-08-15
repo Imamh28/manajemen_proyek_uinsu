@@ -14,4 +14,3 @@ if (!$koneksi) {
 
 // Memulai session
 session_start();
-?>

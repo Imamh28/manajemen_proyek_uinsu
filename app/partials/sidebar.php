@@ -11,7 +11,7 @@
     <!--navigation-->
     <ul class="metismenu" id="menu">
         <li>
-            <a href="index.html">
+            <a href="<?= $BASE_URL ?>">
                 <div class="parent-icon">
                     <ion-icon name="home-outline"></ion-icon>
                 </div>
