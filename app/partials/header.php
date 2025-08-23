@@ -4,7 +4,7 @@
 
 <!-- loader-->
 <link href="<?= $BASE_URL ?>assets/css/pace.min.css" rel="stylesheet" />
-<script src="assets/js/pace.min.js"></script>
+<script src="<?= $BASE_URL ?>assets/js/pace.min.js"></script>
 
 <!--plugins-->
 <link href="<?= $BASE_URL ?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />

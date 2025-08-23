@@ -181,23 +181,11 @@
                         <li>
                             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
                                 <div class="d-flex align-items-center">
-                                    <div class="">
-                                        <ion-icon name="log-out-outline"></ion-icon>
-                                    </div>
+                                    <div class=""><ion-icon name="log-out-outline"></ion-icon></div>
                                     <div class="ms-3"><span>Logout</span></div>
                                 </div>
                             </a>
                         </li>
-                        <?php
-                        renderModal(
-                            'logoutModal',
-                            'Konfirmasi Logout',
-                            'Apakah kamu yakin ingin keluar dari aplikasi?',
-                            'danger',
-                            'Batal',
-                            '/auth/logout.php'
-                        );
-                        ?>
                     </ul>
                 </li>
 

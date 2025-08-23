@@ -10,13 +10,6 @@ include_once __DIR__ . '/partials/modal.php';
     <?php include 'partials/header.php'; ?>
 </head>
 
-<!-- IMPORTANT, besides the login page always provide this code -->
-<!-- <script>
-    window.addEventListener("unload", function() {
-        navigator.sendBeacon('/auth/logout.php');
-    });
-</script> -->
-
 <body>
     <!--start wrapper-->
     <div class="wrapper">
@@ -35,6 +28,21 @@ include_once __DIR__ . '/partials/modal.php';
         <!--end overlay-->
     </div>
     <!--end wrapper-->
+
+    <?php
+    // Pindahkan markup modal ke luar dropdown (global), tidak di navbar.php
+    if (function_exists('renderModal')) {
+        renderModal(
+            'logoutModal',
+            'Konfirmasi Logout',
+            'Apakah kamu yakin ingin keluar dari aplikasi?',
+            'danger',
+            'Batal',
+            $BASE_URL . 'auth/logout.php'
+        );
+    }
+    ?>
+
     <?php include 'partials/script.php'; ?>
 </body>
 

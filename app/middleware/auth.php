@@ -1,7 +1,11 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Jangan panggil session_start(); sudah di-handle oleh config/init.php
 
 if (!isset($_SESSION['user'])) {
-    header('Location: auth/login.php');
+    if (isset($BASE_URL)) {
+        header('Location: ' . $BASE_URL . 'auth/login.php');
+    } else {
+        header('Location: auth/login.php');
+    }
     exit;
 }

@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../config/init.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
 <!doctype html>
 <html lang="en" class="light-theme">
@@ -39,9 +38,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         </span>
                                     </div>
                                 </div>
-                                <div>
-                                    <a href="authentication-reset-password-basic.html">Forgot Password?</a>
-                                </div>
+                                <!-- <div>
+                                    <a href="#">Forgot Password?</a>
+                                </div> -->
                                 <div class="col-12 col-lg-12">
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary">Sign In</button>

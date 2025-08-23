@@ -1,8 +1,7 @@
-<?php include 'partials/alert.php'; ?>
-<!-- start page content wrapper-->
 <div class="page-content-wrapper">
     <!-- start page content-->
     <div class="page-content">
+        <?php include_once __DIR__ . '/../partials/alert.php'; ?>
         <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-4">
             <div class="col">
                 <div class="card radius-10">

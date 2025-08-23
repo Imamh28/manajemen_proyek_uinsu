@@ -68,6 +68,14 @@
                 <div class="menu-title">Daftar Tahapan Proyek</div>
             </a>
         </li>
+        <li>
+            <a href="#">
+                <div class="parent-icon">
+                    <ion-icon name="flag-outline"></ion-icon>
+                </div>
+                <div class="menu-title">Kelola Role dan Hak Akses</div>
+            </a>
+        </li>
     </ul>
     <!--end navigation-->
 </aside>
