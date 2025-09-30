@@ -1,0 +1,3 @@
+{"ts":"2025-09-19T10:00:14+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"karyawan_create","payload":{"id":"KR007","email":"ariyo@gmail.com"}}
+{"ts":"2025-09-19T19:08:41+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.update","payload":{"id":"PRJ002","nama":"Renovasi Kantor Maju"}}
+{"ts":"2025-09-19T20:49:06+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.update","payload":{"id":"PRJ001","nama":"Website E-commerce Snack"}}

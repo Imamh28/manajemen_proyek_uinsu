@@ -52,15 +52,26 @@ require_once __DIR__ . '/../config/init.php';
                 </div>
             </div>
         </div>
-        <footer class="my-5">
-            <div>
-                <div class="text-center">
-                    <p class="my-2">Copyright <?= $APP_NAME ?></p>
-                </div>
-            </div>
-        </footer>
     </div>
     <!--end wrapper-->
+
+    <!-- Function for visibilty password -->
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('inputPassword');
+            const eyeIcon = document.getElementById('eyeIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('bi-eye');
+                eyeIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('bi-eye-slash');
+                eyeIcon.classList.add('bi-eye');
+            }
+        }
+    </script>
 
     <?php include '../partials/script.php'; ?>
 

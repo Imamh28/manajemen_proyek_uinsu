@@ -1,0 +1,5 @@
+{"ts":"2025-09-20T08:38:56+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"klien_update","payload":{"id":"KL001","email":"kontak@majumundur.com"}}
+{"ts":"2025-09-20T08:39:10+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"klien_update","payload":{"id":"KL002","email":"info@sejahterabersama.co.id"}}
+{"ts":"2025-09-20T08:41:34+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"klien_create","payload":{"id":"KL003","email":"wahanawihana@yahoo.com"}}
+{"ts":"2025-09-20T18:30:40+02:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL001","proyek":"PRJ003"}}
+{"ts":"2025-09-20T18:43:34+02:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL002","proyek":"PRJ003"}}

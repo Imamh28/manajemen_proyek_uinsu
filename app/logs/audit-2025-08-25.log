@@ -1,0 +1,14 @@
+{"ts":"2025-08-25T17:03:53+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"karyawan_export","payload":{"count":5,"search":""}}
+{"ts":"2025-08-25T17:34:28+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"karyawan_export","payload":{"count":5,"search":""}}
+{"ts":"2025-08-25T17:34:34+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"karyawan_export","payload":{"count":5,"search":""}}
+{"ts":"2025-08-25T19:12:31+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_CREATE","payload":{"nama":"Maju Bersama"}}
+{"ts":"2025-08-25T19:13:06+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_UPDATE","payload":{"id":6,"nama":"Maju Bersama Dia"}}
+{"ts":"2025-08-25T19:13:17+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_DELETE","payload":{"id":6}}
+{"ts":"2025-08-25T19:13:20+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_EXPORT","payload":{"count":4,"search":""}}
+{"ts":"2025-08-25T19:15:39+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_EXPORT","payload":{"count":4,"search":""}}
+{"ts":"2025-08-25T19:15:40+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"BRAND_EXPORT","payload":{"count":4,"search":""}}
+{"ts":"2025-08-25T20:03:12+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"klien.export","payload":{"search":"","count":2}}
+{"ts":"2025-08-25T20:03:12+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"klien.export","payload":{"search":"","count":2}}
+{"ts":"2025-08-25T21:25:21+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"tahapan.export","payload":{"search":"","rows":6}}
+{"ts":"2025-08-25T21:25:21+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"tahapan.export","payload":{"search":"","rows":6}}
+{"ts":"2025-08-25T21:25:22+02:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"tahapan.export","payload":{"search":"","rows":6}}

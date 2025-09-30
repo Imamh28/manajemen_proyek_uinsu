@@ -17,6 +17,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/* === CSRF bootstrap (TAMBAHKAN 2 BARIS INI) === */
+require_once __DIR__ . '/../utils/csrf.php';
+csrf_ensure_token();
+/* ============================================= */
+
 // Idle timeout 10 menit
 if (isset($_SESSION['LAST_ACTIVITY']) && time() - $_SESSION['LAST_ACTIVITY'] > 600) {
     session_unset();

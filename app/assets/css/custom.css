@@ -1,0 +1,40 @@
+.dropdown-large .dropdown-menu {
+    width: 380px;
+    max-width: calc(100vw - 2rem)
+}
+
+.header-notifications-list {
+    max-height: 360px;
+    overflow-y: auto
+}
+
+.header-notifications-list .dropdown-item {
+    white-space: normal
+}
+
+.header-notifications-list .msg-name {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    margin-bottom: .15rem
+}
+
+.header-notifications-list .msg-name .msg-time {
+    margin-left: auto;
+    float: none !important;
+    white-space: nowrap;
+    font-size: .85em;
+    opacity: .8
+}
+
+.header-notifications-list .msg-info {
+    margin: 0;
+    white-space: normal;
+    word-break: break-word;
+    color: #555
+}
+
+.header-notifications-list .notify {
+    width: 32px;
+    min-width: 32px
+}

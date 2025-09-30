@@ -1,20 +1,3 @@
-<!-- Function for visibilty password -->
-<script>
-    function togglePasswordVisibility() {
-        const passwordInput = document.getElementById('inputPassword');
-        const eyeIcon = document.getElementById('eyeIcon');
-
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            eyeIcon.classList.remove('bi-eye');
-            eyeIcon.classList.add('bi-eye-slash');
-        } else {
-            passwordInput.type = 'password';
-            eyeIcon.classList.remove('bi-eye-slash');
-            eyeIcon.classList.add('bi-eye');
-        }
-    }
-</script>
 <!-- JS Files-->
 <script src="<?= $BASE_URL ?>assets/js/jquery.min.js"></script>
 <script src="<?= $BASE_URL ?>assets/plugins/simplebar/js/simplebar.min.js"></script>

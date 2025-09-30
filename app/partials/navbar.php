@@ -1,163 +1,111 @@
+<?php
+// app/partials/navbar.php
+require_once __DIR__ . '/../helpers/Notify.php';
+
+$user    = $_SESSION['user'] ?? [];
+$uid     = (string)($user['id'] ?? '');
+$uName   = $user['nama_karyawan'] ?? $user['nama'] ?? $user['name'] ?? $user['username'] ?? 'Pengguna';
+$roleId  = $user['role_id'] ?? '';
+$roleStr = function_exists('role_name') ? role_name((string)$roleId) : ($user['role_name'] ?? 'User');
+
+$UNREAD  = $uid ? notif_unread_count($GLOBALS['pdo'], $uid) : 0;
+$NOTIFS  = $uid ? notif_latest($GLOBALS['pdo'], $uid, 8) : [];
+?>
 <!--start top header-->
 <header class="top-header">
     <nav class="navbar navbar-expand gap-3">
-        <div class="toggle-icon">
-            <ion-icon name="menu-outline"></ion-icon>
-        </div>
+        <div class="toggle-icon"><ion-icon name="menu-outline"></ion-icon></div>
 
         <div class="top-navbar-right ms-auto">
-
             <ul class="navbar-nav align-items-center">
+
                 <li class="nav-item">
                     <a class="nav-link dark-mode-icon" href="javascript:;">
-                        <div class="mode-icon">
-                            <ion-icon name="moon-outline"></ion-icon>
-                        </div>
+                        <div class="mode-icon"><ion-icon name="moon-outline"></ion-icon></div>
                     </a>
                 </li>
+
+                <!-- Notifications -->
                 <li class="nav-item dropdown dropdown-large">
                     <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="javascript:;" data-bs-toggle="dropdown">
                         <div class="position-relative">
-                            <span class="notify-badge">8</span>
+                            <?php if ($UNREAD > 0): ?>
+                                <span class="notify-badge"><?= (int)$UNREAD ?></span>
+                            <?php endif; ?>
                             <ion-icon name="notifications-outline"></ion-icon>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end">
-                        <a href="javascript:;">
-                            <div class="msg-header">
-                                <p class="msg-header-title">Notifications</p>
-                                <p class="msg-header-clear ms-auto">Marks all as read</p>
-                            </div>
-                        </a>
-                        <div class="header-notifications-list">
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-primary">
-                                        <ion-icon name="cart-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">New Orders <span class="msg-time float-end">2 min
-                                                ago</span></h6>
-                                        <p class="msg-info">You have recived new orders</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-danger">
-                                        <ion-icon name="person-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">New Customers<span class="msg-time float-end">14 Sec
-                                                ago</span></h6>
-                                        <p class="msg-info">5 new user registered</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-success">
-                                        <ion-icon name="document-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">24 PDF File<span class="msg-time float-end">19 min
-                                                ago</span></h6>
-                                        <p class="msg-info">The pdf files generated</p>
-                                    </div>
-                                </div>
-                            </a>
+                        <div class="msg-header">
+                            <p class="msg-header-title mb-0">Notifikasi</p>
+                            <form method="POST" action="<?= $BASE_URL ?>index.php?r=notify/readall" class="ms-auto">
+                                <?= function_exists('csrf_input') ? csrf_input() : '' ?>
+                                <button class="btn btn-link p-0 msg-header-clear" type="submit">Tandai Semua Sudah Dibaca</button>
+                            </form>
+                        </div>
 
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-info">
-                                        <ion-icon name="checkmark-done-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">New Product Approved <span class="msg-time float-end">2 hrs ago</span></h6>
-                                        <p class="msg-info">Your new product has approved</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-warning">
-                                        <ion-icon name="send-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">Time Response <span class="msg-time float-end">28 min
-                                                ago</span></h6>
-                                        <p class="msg-info">5.1 min avarage time response</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-danger">
-                                        <ion-icon name="chatbox-ellipses-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">New Comments <span class="msg-time float-end">4 hrs
-                                                ago</span></h6>
-                                        <p class="msg-info">New customer comments recived</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-primary">
-                                        <ion-icon name="albums-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">New 24 authors<span class="msg-time float-end">1 day
-                                                ago</span></h6>
-                                        <p class="msg-info">24 new authors joined last week</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-success">
-                                        <ion-icon name="shield-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">Your item is shipped <span class="msg-time float-end">5 hrs
-                                                ago</span></h6>
-                                        <p class="msg-info">Successfully shipped your item</p>
-                                    </div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item" href="javascript:;">
-                                <div class="d-flex align-items-center">
-                                    <div class="notify text-warning">
-                                        <ion-icon name="cafe-outline"></ion-icon>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="msg-name">Defense Alerts <span class="msg-time float-end">2 weeks
-                                                ago</span></h6>
-                                        <p class="msg-info">45% less alerts last 4 weeks</p>
-                                    </div>
-                                </div>
-                            </a>
+                        <div class="header-notifications-list">
+                            <?php if (!empty($NOTIFS)): ?>
+                                <?php foreach ($NOTIFS as $n):
+                                    $t = strtolower($n['title'] ?? '');
+                                    $cls = 'text-primary';
+                                    $icon = 'notifications-outline';
+                                    if (str_contains($t, 'hapus')) {
+                                        $cls = 'text-danger';
+                                        $icon = 'trash-outline';
+                                    } elseif (str_contains($t, 'tolak') || str_contains($t, 'rejected')) {
+                                        $cls = 'text-danger';
+                                        $icon = 'close-circle-outline';
+                                    } elseif (str_contains($t, 'setuju') || str_contains($t, 'approved')) {
+                                        $cls = 'text-success';
+                                        $icon = 'checkmark-done-outline';
+                                    } elseif (str_contains($t, 'ubah') || str_contains($t, 'update')) {
+                                        $cls = 'text-warning';
+                                        $icon = 'create-outline';
+                                    } elseif (str_contains($t, 'tinjau') || str_contains($t, 'pengajuan') || str_contains($t, 'tahapan')) {
+                                        $cls = 'text-info';
+                                        $icon = 'flag-outline';
+                                    }
+                                    $href = ($n['link'] ?? '') ?: 'javascript:;';
+                                ?>
+                                    <a class="dropdown-item" href="<?= $BASE_URL ?>index.php?r=notify/open&id=<?= (int)$n['id'] ?>">
+                                        <div class="d-flex align-items-center">
+                                            <div class="notify <?= $cls ?>"><ion-icon name="<?= $icon ?>"></ion-icon></div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="msg-name">
+                                                    <?= htmlspecialchars($n['title']) ?>
+                                                    <span class="msg-time float-end"><?= htmlspecialchars(date('d M H:i', strtotime($n['created_at']))) ?></span>
+                                                </h6>
+                                                <p class="msg-info"><?= htmlspecialchars($n['body']) ?></p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="text-center text-muted p-3">Tidak ada notifikasi.</div>
+                            <?php endif; ?>
                         </div>
                         <a href="javascript:;">
-                            <div class="text-center msg-footer">View All Notifications</div>
+                            <div class="text-center msg-footer">Semua Notifikasi</div>
                         </a>
                     </div>
                 </li>
+
+                <!-- User -->
                 <li class="nav-item dropdown dropdown-user-setting">
                     <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="javascript:;" data-bs-toggle="dropdown">
                         <div class="user-setting">
-                            <img src="<?= $BASE_URL ?>assets/images/avatars/06.png" class="user-img" alt="">
+                            <img src="<?= $BASE_URL ?>assets/images/avatars/13.png" class="user-img" alt="">
                         </div>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
                             <a class="dropdown-item" href="javascript:;">
                                 <div class="d-flex flex-row align-items-center gap-2">
-                                    <img src="<?= $BASE_URL ?>assets/images/avatars/06.png" alt="" class="rounded-circle" width="54" height="54">
-                                    <div class="">
-                                        <h6 class="mb-0 dropdown-user-name">Jhon Deo</h6>
-                                        <small class="mb-0 dropdown-user-designation text-secondary">UI Developer</small>
+                                    <img src="<?= $BASE_URL ?>assets/images/avatars/13.png" class="rounded-circle" width="54" height="54" alt="">
+                                    <div>
+                                        <h6 class="mb-0 dropdown-user-name"><?= htmlspecialchars($uName) ?></h6>
+                                        <small class="mb-0 dropdown-user-designation text-secondary"><?= htmlspecialchars($roleStr) ?></small>
                                     </div>
                                 </div>
                             </a>
@@ -168,9 +116,7 @@
                         <li>
                             <a class="dropdown-item" href="javascript:;">
                                 <div class="d-flex align-items-center">
-                                    <div class="">
-                                        <ion-icon name="person-outline"></ion-icon>
-                                    </div>
+                                    <div><ion-icon name="person-outline"></ion-icon></div>
                                     <div class="ms-3"><span>Profile</span></div>
                                 </div>
                             </a>
@@ -181,7 +127,7 @@
                         <li>
                             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
                                 <div class="d-flex align-items-center">
-                                    <div class=""><ion-icon name="log-out-outline"></ion-icon></div>
+                                    <div><ion-icon name="log-out-outline"></ion-icon></div>
                                     <div class="ms-3"><span>Logout</span></div>
                                 </div>
                             </a>
@@ -190,7 +136,6 @@
                 </li>
 
             </ul>
-
         </div>
     </nav>
 </header>
