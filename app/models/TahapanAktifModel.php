@@ -96,4 +96,19 @@ class TahapanAktifModel
         $st->execute();
         return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
+
+    /** Ambil proyek terakhir yang diajukan tahapan oleh user (apa pun statusnya). */
+    public function lastRequestedProjectForUser(string $userId): ?string
+    {
+        $st = $this->pdo->prepare(
+            "SELECT proyek_id_proyek
+               FROM tahapan_update_requests
+              WHERE requested_by = :u
+           ORDER BY requested_at DESC
+              LIMIT 1"
+        );
+        $st->execute([':u' => $userId]);
+        $pid = $st->fetchColumn();
+        return $pid ? (string)$pid : null;
+    }
 }

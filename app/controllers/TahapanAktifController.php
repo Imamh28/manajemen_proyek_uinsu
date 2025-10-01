@@ -8,17 +8,26 @@ class TahapanAktifController
 {
     public function __construct(private PDO $pdo, private string $baseUrl) {}
 
+    /** GET /tahapan-aktif/index pengajuan tahapan */
     public function index(): void
     {
         require_roles(['RL003'], $this->baseUrl);
 
         $m = new TahapanAktifModel($this->pdo);
 
+        $userId    = (string)($_SESSION['user']['id'] ?? '');
         $projectId = trim($_GET['proyek'] ?? '');
         $projects  = $m->projectOptions();
-        $rows      = $projectId ? $m->stepsByProject($projectId) : [];
 
-        $userId  = (string)($_SESSION['user']['id'] ?? '');
+        // Jika belum dipilih, default ke proyek dari pengajuan tahapan terakhir user.
+        if ($projectId === '') {
+            $projectId = $m->lastRequestedProjectForUser($userId)
+                ?? ($projects[0]['id_proyek'] ?? ''); // fallback: proyek pertama jika belum pernah mengajukan
+        }
+
+        $rows   = $projectId ? $m->stepsByProject($projectId) : [];
+
+        // pending & riwayat DIBATASI pada proyek yang sedang tampil
         $pending = $projectId ? $m->pendingForUser($userId, $projectId) : [];
         $recent  = $projectId ? $m->recentForUser($userId, 10, $projectId) : [];
 
