@@ -2,6 +2,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- persist theme before CSS loads -->
+<script>
+    (function() {
+        try {
+            var raw = localStorage.getItem('ui_prefs_v1') || '{}';
+            var p = JSON.parse(raw);
+
+            // buang kelas tema/warna lama agar aman
+            var keep = (document.documentElement.className || '')
+                .split(/\s+/).filter(Boolean)
+                .filter(function(c) {
+                    return !/^(light-theme|dark-theme|semi-dark|color-header|headercolor\d+|color-sidebar|sidebarcolor\d+)$/.test(c);
+                });
+
+            var add = [];
+            if (p.theme) add.push(p.theme); // 'light-theme' | 'dark-theme' | 'semi-dark'
+            if (p.header) add.push(p.header); // 'color-header headercolorN'
+            if (p.sidebar) add.push(p.sidebar); // 'color-sidebar sidebarcolorN'
+
+            document.documentElement.className = keep.concat(add).join(' ').trim();
+        } catch (e) {
+            /* ignore */
+        }
+    })();
+</script>
+
 <!-- loader-->
 <link href="<?= $BASE_URL ?>assets/css/pace.min.css" rel="stylesheet" />
 <script src="<?= $BASE_URL ?>assets/js/pace.min.js"></script>

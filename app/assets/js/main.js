@@ -1,187 +1,98 @@
-$(function() {
+// assets/js/main.js
+$(function () {
+  const LS_KEY = 'ui_prefs_v1';
+  const $html = $('html');
+  const $wrapper = $('.wrapper');
 
-
-
-  $(function() {
-		$("#menu").metisMenu()
-	})
-
-
-  $(".nav-toggle-icon").on("click", function() {
-		$(".wrapper").toggleClass("toggled")
-	})
-
-    $(".mobile-menu-button").on("click", function() {
-		$(".wrapper").addClass("toggled")
-	})
-
-	$(function() {
-		for (var e = window.location, o = $(".metismenu li a").filter(function() {
-				return this.href == e
-			}).addClass("").parent().addClass("mm-active"); o.is("li");) o = o.parent("").addClass("mm-show").parent("").addClass("mm-active")
-	})
-
-
-	$(".toggle-icon").click(function() {
-		$(".wrapper").hasClass("toggled") ? ($(".wrapper").removeClass("toggled"), $(".sidebar-wrapper").unbind("hover")) : ($(".wrapper").addClass("toggled"), $(".sidebar-wrapper").hover(function() {
-			$(".wrapper").addClass("sidebar-hovered")
-		}, function() {
-			$(".wrapper").removeClass("sidebar-hovered")
-		}))
-	})
-
-
-
-  $(".btn-mobile-filter").on("click", function() {
-		$(".filter-sidebar").removeClass("d-none");
-	}),
-  
-    $(".btn-mobile-filter-close").on("click", function() {
-		$(".filter-sidebar").addClass("d-none");
-	}),
-
-
-
-
-  $(".mobile-search-button").on("click", function() {
-
-    $(".searchbar").addClass("full-search-bar")
-
-  }),
-
-  $(".search-close-icon").on("click", function() {
-
-    $(".searchbar").removeClass("full-search-bar")
-
-  }),
-
-  
-
-
-  $(document).ready(function() {
-		$(window).on("scroll", function() {
-			$(this).scrollTop() > 300 ? $(".back-to-top").fadeIn() : $(".back-to-top").fadeOut()
-		}), $(".back-to-top").on("click", function() {
-			return $("html, body").animate({
-				scrollTop: 0
-			}, 600), !1
-		})
-	})
-
-
-
-
-  $(".dark-mode-icon").on("click", function() {
-
-    if($(".mode-icon ion-icon").attr("name") == 'sunny-outline') {
-        $(".mode-icon ion-icon").attr("name", "moon-outline");
-        $("html").attr("class", "light-theme")
-    } else {
-        $(".mode-icon ion-icon").attr("name", "sunny-outline");
-        $("html").attr("class", "dark-theme")
+  // ---------- storage utils ----------
+  function loadPrefs() {
+    try {
+      return Object.assign(
+        { theme: 'light-theme', header: '', sidebar: '', wrapperToggled: $wrapper.hasClass('toggled') },
+        JSON.parse(localStorage.getItem(LS_KEY) || '{}')
+      );
+    } catch (_) {
+      return { theme: 'light-theme', header: '', sidebar: '', wrapperToggled: $wrapper.hasClass('toggled') };
     }
+  }
+  function savePrefs(p) { localStorage.setItem(LS_KEY, JSON.stringify(p)); }
 
-  }), 
+  function stripThemeClasses() {
+    const toRemove = ($html.attr('class') || '')
+      .split(/\s+/).filter(Boolean)
+      .filter(c => /^(light-theme|dark-theme|semi-dark|color-header|headercolor\d+|color-sidebar|sidebarcolor\d+)$/.test(c));
+    if (toRemove.length) $html.removeClass(toRemove.join(' '));
+  }
 
+  function applyPrefs(p) {
+    stripThemeClasses();
+    const add = [p.theme, p.header, p.sidebar].filter(Boolean);
+    if (add.length) $html.addClass(add.join(' '));
+    $wrapper.toggleClass('toggled', !!p.wrapperToggled);
 
+    // sync icon (optional)
+    const $icon = $('.mode-icon ion-icon');
+    if ($icon.length) $icon.attr('name', p.theme === 'dark-theme' ? 'sunny-outline' : 'moon-outline');
+  }
 
+  let PREFS = loadPrefs();
+  applyPrefs(PREFS);
 
+  // ---------- re-apply if other script overwrites ----------
+  const wantTokens = () => (PREFS.theme + ' ' + PREFS.header + ' ' + PREFS.sidebar)
+    .trim().split(/\s+/).filter(Boolean);
 
-// Theme switcher 
+  const mo = new MutationObserver(() => {
+    const cls = $html.attr('class') || '';
+    const wanted = wantTokens();
+    // Jika ada token preferensi yang hilang, re-apply
+    if (!wanted.every(t => cls.includes(t))) applyPrefs(PREFS);
+  });
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-$("#LightTheme").on("click", function() {
-  $("html").attr("class", "light-theme")
-}),
+  // ---------- setters ----------
+  function setTheme(theme) { PREFS.theme = theme; savePrefs(PREFS); applyPrefs(PREFS); }
+  function setHeader(n) { PREFS.header = n ? `color-header headercolor${n}` : ''; savePrefs(PREFS); applyPrefs(PREFS); }
+  function setSidebar(n) { PREFS.sidebar = n ? `color-sidebar sidebarcolor${n}` : ''; savePrefs(PREFS); applyPrefs(PREFS); }
+  function setToggled(on) { PREFS.wrapperToggled = !!on; savePrefs(PREFS); applyPrefs(PREFS); }
 
-$("#DarkTheme").on("click", function() {
-  $("html").attr("class", "dark-theme")
-}),
+  // ---------- bind UI ----------
+  // toggle dark/light
+  $('.dark-mode-icon').on('click', function () {
+    setTheme(PREFS.theme === 'dark-theme' ? 'light-theme' : 'dark-theme');
+  });
 
-$("#SemiDark").on("click", function() {
-  $("html").attr("class", "semi-dark")
-}),
+  // theme group
+  $('#LightTheme').on('click', () => setTheme('light-theme'));
+  $('#DarkTheme').on('click', () => setTheme('dark-theme'));
+  $('#SemiDark').on('click', () => setTheme('semi-dark'));
 
+  // header colors
+  for (let i = 1; i <= 8; i++) $('#headercolor' + i).on('click', () => setHeader(i));
 
-// headercolor colors 
+  // sidebar colors
+  for (let i = 1; i <= 8; i++) $('#sidebarcolor' + i).on('click', () => setSidebar(i));
 
-$("#headercolor1").on("click", function() {
-  $("html").addClass("color-header headercolor1"), $("html").removeClass("headercolor2 headercolor3 headercolor4 headercolor5 headercolor6 headercolor7 headercolor8")
-}), $("#headercolor2").on("click", function() {
-  $("html").addClass("color-header headercolor2"), $("html").removeClass("headercolor1 headercolor3 headercolor4 headercolor5 headercolor6 headercolor7 headercolor8")
-}), $("#headercolor3").on("click", function() {
-  $("html").addClass("color-header headercolor3"), $("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor5 headercolor6 headercolor7 headercolor8")
-}), $("#headercolor4").on("click", function() {
-  $("html").addClass("color-header headercolor4"), $("html").removeClass("headercolor1 headercolor2 headercolor3 headercolor5 headercolor6 headercolor7 headercolor8")
-}), $("#headercolor5").on("click", function() {
-  $("html").addClass("color-header headercolor5"), $("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor3 headercolor6 headercolor7 headercolor8")
-}), $("#headercolor6").on("click", function() {
-  $("html").addClass("color-header headercolor6"), $("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor5 headercolor3 headercolor7 headercolor8")
-}), $("#headercolor7").on("click", function() {
-  $("html").addClass("color-header headercolor7"), $("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor5 headercolor6 headercolor3 headercolor8")
-}), $("#headercolor8").on("click", function() {
-  $("html").addClass("color-header headercolor8"), $("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor5 headercolor6 headercolor7 headercolor3")
-})
+  // sidebar toggled persist
+  $('.nav-toggle-icon, .toggle-icon').on('click', () => setToggled(!$wrapper.hasClass('toggled')));
+  $('.mobile-menu-button').on('click', () => setToggled(true));
 
+  // ---------- the rest of your page JS (safe-guarded) ----------
+  $("#menu").metisMenu();
 
-// sidebar colors 
-$('#sidebarcolor1').click(theme1);
-$('#sidebarcolor2').click(theme2);
-$('#sidebarcolor3').click(theme3);
-$('#sidebarcolor4').click(theme4);
-$('#sidebarcolor5').click(theme5);
-$('#sidebarcolor6').click(theme6);
-$('#sidebarcolor7').click(theme7);
-$('#sidebarcolor8').click(theme8);
+  if (window.PerfectScrollbar) new PerfectScrollbar(".header-notifications-list");
 
-function theme1() {
-  $('html').attr('class', 'color-sidebar sidebarcolor1');
-}
+  $('[data-bs-toggle="tooltip"]').tooltip();
+  $(window).on("scroll", function () {
+    $(this).scrollTop() > 300 ? $(".back-to-top").fadeIn() : $(".back-to-top").fadeOut()
+  });
+  $(".back-to-top").on("click", function () { $("html, body").animate({ scrollTop: 0 }, 600); return false; });
 
-function theme2() {
-  $('html').attr('class', 'color-sidebar sidebarcolor2');
-}
-
-function theme3() {
-  $('html').attr('class', 'color-sidebar sidebarcolor3');
-}
-
-function theme4() {
-  $('html').attr('class', 'color-sidebar sidebarcolor4');
-}
-
-function theme5() {
-  $('html').attr('class', 'color-sidebar sidebarcolor5');
-}
-
-function theme6() {
-  $('html').attr('class', 'color-sidebar sidebarcolor6');
-}
-
-function theme7() {
-  $('html').attr('class', 'color-sidebar sidebarcolor7');
-}
-
-function theme8() {
-  $('html').attr('class', 'color-sidebar sidebarcolor8');
-}
-
-
-
-
-
-
-
-  new PerfectScrollbar(".header-notifications-list")
-
-
-    // Tooltops
-    $(function () {
-      $('[data-bs-toggle="tooltip"]').tooltip();
-    })
-
-
-  
-
-  
-    
+  // activate current menu
+  (function () {
+    var e = window.location.href;
+    var $a = $(".metismenu li a").filter(function () { return this.href === e; });
+    var o = $a.parent().addClass("mm-active");
+    while (o.is("li")) o = o.parent().addClass("mm-show").parent().addClass("mm-active");
+  })();
 });
