@@ -1,32 +1,66 @@
 <?php
+// app/partials/sidebar.php
+
 $menus   = $_SESSION['user']['menus'] ?? [];
 $catName = $_SESSION['user']['menu_cats'] ?? [];
 
+/**
+ * Normalisasi URL menu agar konsisten:
+ * - selalu diawali '/'
+ * - alias khusus: tahapan_aktif -> tahapan-aktif
+ */
+if (!function_exists('normalize_menu_url')) {
+    function normalize_menu_url(string $url): string
+    {
+        $u = trim($url);
+        if ($u === '') return '';
+        if ($u[0] !== '/') $u = '/' . $u;
+
+        // alias khusus (jaga kompatibilitas data lama)
+        if ($u === '/tahapan_aktif') $u = '/tahapan-aktif';
+
+        return $u;
+    }
+}
+
+if (!function_exists('menu_href')) {
+    function menu_href(string $base, string $url): string
+    {
+        $u = normalize_menu_url($url);
+        return rtrim($base, '/') . '/index.php?r=' . ltrim($u, '/');
+    }
+}
+
+// 1) buang menu BRAND (karena modul & tabel sudah tidak ada)
+$menus = array_values(array_filter($menus, function ($m) {
+    $u = normalize_menu_url((string)($m['url'] ?? ''));
+    return $u !== '/brand';
+}));
+
+// Ambil dashboard agar selalu di atas
 $dashboardItem = null;
 foreach ($menus as $i => $m) {
-    if (($m['url'] ?? '') === '/dashboard') {
+    if (normalize_menu_url((string)($m['url'] ?? '')) === '/dashboard') {
         $dashboardItem = $m;
         unset($menus[$i]);
         break;
     }
 }
 
+// Kelompokkan menu per kategori
 $byCat = [];
-foreach ($menus as $m) $byCat[(int)($m['cat_id'] ?? 1)][] = $m;
+foreach ($menus as $m) {
+    $catId = (int)($m['cat_id'] ?? 1);
+    $byCat[$catId][] = $m;
+}
 ksort($byCat);
 
-$currentSlug = strtolower($_GET['r'] ?? 'dashboard');
-$currentSlug = ($currentSlug === 'tahapan_aktif') ? 'tahapan-aktif' : $currentSlug; // alias
+// Current route slug
+$currentSlug = strtolower(trim($_GET['r'] ?? 'dashboard'));
+if ($currentSlug === 'tahapan_aktif') $currentSlug = 'tahapan-aktif'; // alias
 $currentUrl  = '/' . ltrim($currentSlug, '/');
 
 $base = rtrim($BASE_URL, '/');
-
-if (!function_exists('menu_href')) {
-    function menu_href(string $base, string $url): string
-    {
-        return $base . '/index.php?r=' . ltrim($url, '/');
-    }
-}
 
 $iconMap = [
     '/dashboard'     => 'home-outline',
@@ -36,9 +70,9 @@ $iconMap = [
     '/penjadwalan'   => 'calendar-outline',
     '/karyawan'      => 'person-outline',
     '/klien'         => 'people-outline',
-    '/brand'         => 'pricetags-outline',
+    // '/brand' dihapus
     '/tahapan'       => 'list-outline',
-    '/tahapan-aktif' => 'list-outline', // hyphen
+    '/tahapan-aktif' => 'list-outline',
     '/roles'         => 'flag-outline',
 ];
 
@@ -51,11 +85,12 @@ $catAlias = [1 => 'Operasional', 2 => 'Data Master'];
             <h1 class="logo-text">Manajemen</h1>
         </div>
     </div>
+
     <ul class="metismenu" id="menu">
         <?php
-        $dashUrl   = '/dashboard';
-        $dashIcon  = $iconMap[$dashUrl] ?? 'home-outline';
-        $dashName  = $dashboardItem['nama_menu'] ?? 'Dashboard';
+        $dashUrl    = '/dashboard';
+        $dashIcon   = $iconMap[$dashUrl] ?? 'home-outline';
+        $dashName   = $dashboardItem['nama_menu'] ?? 'Dashboard';
         $dashActive = ($currentUrl === $dashUrl) || ($currentUrl === '/' && $dashUrl === '/dashboard');
         ?>
         <li class="<?= $dashActive ? 'mm-active' : '' ?>">
@@ -65,11 +100,19 @@ $catAlias = [1 => 'Operasional', 2 => 'Data Master'];
             </a>
         </li>
 
-        <?php if (!empty($byCat)): foreach ($byCat as $catId => $items): if (empty($items)) continue; ?>
+        <?php if (!empty($byCat)): ?>
+            <?php foreach ($byCat as $catId => $items): if (empty($items)) continue; ?>
                 <li class="menu-label"><?= htmlspecialchars($catAlias[$catId] ?? ($catName[$catId] ?? 'Menu')) ?></li>
+
                 <?php foreach ($items as $m):
-                    $url      = ($m['url'] === '/tahapan_aktif') ? '/tahapan-aktif' : $m['url']; // alias
-                    $name     = $m['nama_menu'];
+                    $urlRaw  = (string)($m['url'] ?? '');
+                    $url     = normalize_menu_url($urlRaw);
+                    if ($url === '') continue;
+
+                    // jika masih ada /brand nyasar (double safety)
+                    if ($url === '/brand') continue;
+
+                    $name     = (string)($m['nama_menu'] ?? 'Menu');
                     $isActive = ($currentUrl === $url);
                     $icon     = $iconMap[$url] ?? 'chevron-forward-outline';
                 ?>
@@ -80,7 +123,8 @@ $catAlias = [1 => 'Operasional', 2 => 'Data Master'];
                         </a>
                     </li>
                 <?php endforeach; ?>
-        <?php endforeach;
-        endif; ?>
+
+            <?php endforeach; ?>
+        <?php endif; ?>
     </ul>
 </aside>

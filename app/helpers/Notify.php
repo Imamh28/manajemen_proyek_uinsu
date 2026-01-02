@@ -16,16 +16,16 @@ function notif_unread_count(PDO $pdo, string $userId): int
  */
 function notif_latest(PDO $pdo, string $userId, int $limit = 10): array
 {
+    $limit = max(1, min(50, (int)$limit));
+
     $st = $pdo->prepare("
         SELECT id, title, body, link, link_admin, link_pm, link_mandor, is_read, created_at
           FROM notifications
          WHERE user_id = :u
       ORDER BY created_at DESC, id DESC
-         LIMIT :lim
+         LIMIT {$limit}
     ");
-    $st->bindValue(':u', $userId);
-    $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-    $st->execute();
+    $st->execute([':u' => $userId]);
     return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
@@ -37,9 +37,9 @@ function notif_latest(PDO $pdo, string $userId, int $limit = 10): array
  */
 function notif_role_url(array $row, string $roleCode): string
 {
-    if ($roleCode === 'RL001' && !empty($row['link_admin']))   return $row['link_admin'];
-    if ($roleCode === 'RL002' && !empty($row['link_pm']))      return $row['link_pm'];
-    if ($roleCode === 'RL003' && !empty($row['link_mandor']))  return $row['link_mandor'];
+    if ($roleCode === 'RL001' && !empty($row['link_admin']))  return $row['link_admin'];
+    if ($roleCode === 'RL002' && !empty($row['link_pm']))     return $row['link_pm'];
+    if ($roleCode === 'RL003' && !empty($row['link_mandor'])) return $row['link_mandor'];
     return $row['link'] ?: 'index.php?r=dashboard';
 }
 
@@ -64,42 +64,7 @@ function notif_insert_for_user(PDO $pdo, string $userId, string $title, string $
 }
 
 /**
- * Broadcast ke semua karyawan (1 baris notif per user).
- */
-function notif_broadcast(PDO $pdo, string $title, string $body, array $links): int
-{
-    $ids = $pdo->query("SELECT id_karyawan FROM karyawan")->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    if (!$ids) return 0;
-
-    $pdo->beginTransaction();
-    try {
-        $ins = $pdo->prepare("
-            INSERT INTO notifications (user_id, title, body, link, link_admin, link_pm, link_mandor, is_read, created_at)
-            VALUES (:u, :t, :b, :all_link, :la, :lp, :lm, 0, NOW())
-        ");
-        $count = 0;
-        foreach ($ids as $uid) {
-            $ok = $ins->execute([
-                ':u'        => $uid,
-                ':t'        => $title,
-                ':b'        => $body,
-                ':all_link' => $links['all']    ?? ($links['admin'] ?? $links['pm'] ?? $links['mandor'] ?? 'index.php?r=dashboard'),
-                ':la'       => $links['admin']  ?? null,
-                ':lp'       => $links['pm']     ?? null,
-                ':lm'       => $links['mandor'] ?? null,
-            ]);
-            if ($ok) $count++;
-        }
-        $pdo->commit();
-        return $count;
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        throw $e;
-    }
-}
-
-/**
- * Kirim notifikasi ke daftar user tertentu (helper).
+ * Kirim notifikasi ke daftar user tertentu.
  * $links: string (dipakai sebagai 'all') atau array ['admin'=>..., 'pm'=>..., 'mandor'=>..., 'all'=>...]
  */
 function notify_users(PDO $pdo, array $userIds, string $title, string $body, string|array $links): int
@@ -114,7 +79,6 @@ function notify_users(PDO $pdo, array $userIds, string $title, string $body, str
 
 /**
  * Kirim notifikasi ke semua user dengan role tertentu.
- * Contoh: notify_roles($pdo, ['RL002'],'Judul','Isi','index.php?r=dashboard')
  */
 function notify_roles(PDO $pdo, array $roleCodes, string $title, string $body, string|array $links): int
 {
@@ -128,8 +92,6 @@ function notify_roles(PDO $pdo, array $roleCodes, string $title, string $body, s
 
 /**
  * Broadcast role-aware dengan opsi exclude user & filter role.
- * - $excludeUserIds: daftar id_karyawan yang tidak akan dikirimi notif
- * - $onlyRoles: jika diisi, hanya role_id_role pada daftar ini yang dikirimi notif
  */
 function notif_broadcast_excluding(PDO $pdo, string $title, string $body, array $links, array $excludeUserIds = [], ?array $onlyRoles = null): int
 {
@@ -145,12 +107,13 @@ function notif_broadcast_excluding(PDO $pdo, string $title, string $body, array 
             INSERT INTO notifications (user_id, title, body, link, link_admin, link_pm, link_mandor, is_read, created_at)
             VALUES (:u, :t, :b, :all_link, :la, :lp, :lm, 0, NOW())
         ");
+
         $count = 0;
         foreach ($rows as $r) {
-            $uid = (string)$r['id_karyawan'];
-            $rid = (string)$r['role_id_role'];
+            $uid = (string)($r['id_karyawan'] ?? '');
+            $rid = (string)($r['role_id_role'] ?? '');
             if ($uid === '' || in_array($uid, $exclude, true)) continue;
-            if ($allow && !in_array($rid, $allow, true))        continue;
+            if ($allow && !in_array($rid, $allow, true)) continue;
 
             $ok = $ins->execute([
                 ':u'        => $uid,
@@ -163,6 +126,7 @@ function notif_broadcast_excluding(PDO $pdo, string $title, string $body, array 
             ]);
             if ($ok) $count++;
         }
+
         $pdo->commit();
         return $count;
     } catch (Throwable $e) {
@@ -171,558 +135,295 @@ function notif_broadcast_excluding(PDO $pdo, string $title, string $body, array 
     }
 }
 
+/* =========================
+   Internal helpers (private-ish)
+   ========================= */
+
+function notif_get_project(PDO $pdo, string $pid): ?array
+{
+    if ($pid === '') return null;
+    $st = $pdo->prepare("SELECT id_proyek, nama_proyek, status, karyawan_id_pic_site, karyawan_id_pic_sales FROM proyek WHERE id_proyek=:p LIMIT 1");
+    $st->execute([':p' => $pid]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    return $r ?: null;
+}
+
+function notif_get_pm_ids(PDO $pdo): array
+{
+    $st = $pdo->prepare("SELECT id_karyawan FROM karyawan WHERE role_id_role='RL002'");
+    $st->execute();
+    return $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+}
+
+function notif_get_admin_ids(PDO $pdo): array
+{
+    $st = $pdo->prepare("SELECT id_karyawan FROM karyawan WHERE role_id_role='RL001'");
+    $st->execute();
+    return $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+}
+
 /**
- * Event → title/body/links (role-aware, BROADCAST).
- * $ctx contoh: ['proyek_id'=>'PRJ001','id_jadwal'=>'JDL001','tahap_id'=>'TH01','nama'=>'Apple','id'=>3,'who_name'=>'Budi','actor_id'=>'KRY001']
+ * Event → title/body/links (role-aware).
+ * PENTING: actor_id harus id_karyawan (bukan id_user).
  */
 function notif_event(PDO $pdo, string $event, array $ctx): int
 {
-    $pid      = $ctx['proyek_id']  ?? '';
-    $jdl      = $ctx['id_jadwal']  ?? '';
-    $tahap    = $ctx['tahap_id']   ?? '';
-    $who      = $ctx['who_name']   ?? '';
-    $nm       = $ctx['nama']       ?? ''; // brand/klien name
-    $rid      = $ctx['id']         ?? ''; // brand/klien id
-    $actorId  = isset($ctx['actor_id']) ? (string)$ctx['actor_id'] : '';
+    $pid     = (string)($ctx['proyek_id'] ?? '');
+    $jdl     = (string)($ctx['id_jadwal'] ?? '');
+    $tahapId = (string)($ctx['tahap_id']  ?? '');
+    $tahapNm = (string)($ctx['tahapan']   ?? '');
+    $rid     = (string)($ctx['id']        ?? ''); // bisa id pembayaran / id request, dll
+    $who     = (string)($ctx['who']       ?? ($ctx['who_name'] ?? ''));
+    $actorId = (string)($ctx['actor_id']  ?? '');
+
+    $proj = $pid ? notif_get_project($pdo, $pid) : null;
+    $pName = (string)($proj['nama_proyek'] ?? '');
+    $picSite = (string)($proj['karyawan_id_pic_site'] ?? '');
+    $status  = (string)($proj['status'] ?? '');
 
     switch ($event) {
-        /* ===== PROYEK → PM actionable (buat/cek jadwal) ===== */
+
+        /* ========== PROYEK ========== */
         case 'proyek_created': {
+                // FLOW: proyek dibuat -> status Menunggu -> (pembayaran wajib) -> baru penjadwalan (PM)
+                // FIX: jangan kirim ke Mandor.
                 $title = 'Proyek Baru Ditambahkan';
-                $body  = "Proyek {$pid} baru saja ditambahkan. PM harap membuat penjadwalan.";
+                $body  = $pid !== ''
+                    ? "Proyek {$pid}" . ($pName ? " ({$pName})" : "") . " ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan."
+                    : "Proyek baru ditambahkan. Lakukan pembayaran terlebih dahulu, lalu PM membuat penjadwalan.";
+
                 $links = [
-                    'admin'  => "index.php?r=dashboard",
-                    'pm'     => "index.php?r=penjadwalan&proyek={$pid}",
+                    'admin'  => "index.php?r=proyek",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan&proyek={$pid}" : "index.php?r=penjadwalan",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
         case 'proyek_updated': {
                 $title = 'Proyek Diperbarui';
-                $body  = "Proyek {$pid} diperbarui. PM harap meninjau penjadwalan.";
+                $body  = $pid !== '' ? "Proyek {$pid}" . ($pName ? " ({$pName})" : "") . " diperbarui." : "Proyek diperbarui.";
+
                 $links = [
-                    'admin'  => "index.php?r=dashboard",
-                    'pm'     => "index.php?r=penjadwalan&proyek={$pid}",
+                    'admin'  => "index.php?r=proyek",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan/detailproyek&proyek={$pid}" : "index.php?r=dashboard",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                // Mandor tidak perlu notif update proyek (menghindari link yang belum siap).
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
         case 'proyek_deleted': {
                 $title = 'Proyek Dihapus';
-                $body  = "Proyek {$pid} telah dihapus.";
+                $body  = $pid !== '' ? "Proyek {$pid} telah dihapus." : "Proyek telah dihapus.";
+
                 $links = [
-                    'admin'  => "index.php?r=dashboard",
+                    'admin'  => "index.php?r=proyek",
                     'pm'     => "index.php?r=dashboard",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
-            /* ===== PENJADWALAN → Mandor actionable (tahapan-aktif) ===== */
-        case 'jadwal_created': {
-                $title = 'Jadwal Ditambahkan';
-                $body  = "Jadwal {$jdl} untuk proyek {$pid} berhasil dibuat.";
-                $links = [
-                    'admin'  => "index.php?r=dashboard",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=tahapan-aktif&proyek={$pid}",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
-            }
-
-        case 'jadwal_updated': {
-                $title = 'Jadwal Diperbarui';
-                $body  = "Jadwal {$jdl} pada proyek {$pid} telah diperbarui.";
-                $links = [
-                    'admin'  => "index.php?r=dashboard",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=tahapan-aktif&proyek={$pid}",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
-            }
-
-        case 'jadwal_deleted': {
-                $title = 'Jadwal Dihapus';
-                $body  = "Jadwal {$jdl} pada proyek {$pid} telah dihapus.";
-                $links = [
-                    'admin'  => "index.php?r=dashboard",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=tahapan-aktif&proyek={$pid}",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [(string)$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
-            }
-
-            /* ===== TAHAPAN APPROVAL ===== */
-        case 'tahapan_request': {
-                $pid     = (string)($ctx['proyek_id'] ?? '');
-                $tahap   = (string)($ctx['tahapan']   ?? '');
-                $who     = (string)($ctx['who']       ?? '');
-                $actorId = (string)($ctx['actor_id']  ?? ''); // mandor pengaju
-
-                $title = 'Pengajuan Tahapan Baru';
-                $body  = ($who ? "{$who} " : '') . "mengajukan tahapan {$tahap} untuk proyek {$pid}.";
-                $links = [
-                    'pm'     => "index.php?r=tahapan-approval", // PM actionable
-                    'admin'  => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                // hanya PM, exclude pelaku
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    $actorId !== '' ? [$actorId] : [],
-                    ['RL002'] // target: PM saja
-                );
-            }
-
-        case 'tahapan_approved': {
-                $pid     = (string)($ctx['proyek_id']    ?? '');
-                $tahap   = (string)($ctx['tahapan']      ?? '');
-                $target  = (string)($ctx['requested_by'] ?? ''); // mandor pemohon
-                $title = 'Pengajuan Tahapan Disetujui';
-                $body  = "Tahapan {$tahap} untuk proyek {$pid} telah disetujui.";
-                $links = [
-                    'mandor' => "index.php?r=tahapan-aktif&proyek={$pid}",
-                    'pm'     => "index.php?r=dashboard",
-                    'admin'  => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                // notify hanya ke pemohon (mandor)
-                return notify_users($pdo, [$target], $title, $body, $links);
-            }
-
-        case 'tahapan_rejected': {
-                $pid     = (string)($ctx['proyek_id']    ?? '');
-                $tahap   = (string)($ctx['tahapan']      ?? '');
-                $note    = (string)($ctx['note']         ?? '');
-                $target  = (string)($ctx['requested_by'] ?? '');
-                $title = 'Pengajuan Tahapan Ditolak';
-                $body  = "Tahapan {$tahap} untuk proyek {$pid} ditolak." . ($note ? " Catatan: {$note}" : '');
-                $links = [
-                    'mandor' => "index.php?r=tahapan-aktif&proyek={$pid}",
-                    'pm'     => "index.php?r=dashboard",
-                    'admin'  => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notify_users($pdo, [$target], $title, $body, $links);
-            }
-
-            /* ===== BRAND (Admin actionable; PM & Mandor info-only; skip admin pelaku) ===== */
-        case 'brand_created': {
-                $title = 'Brand Ditambahkan';
-                $body  = 'Brand ' . ($nm !== '' ? $nm : '(tanpa nama)') . ' berhasil ditambahkan.';
-                $links = [
-                    'admin'  => "index.php?r=brand",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-        case 'brand_updated': {
-                $title = 'Brand Diperbarui';
-                $body  = 'Brand ' . ($nm !== '' ? $nm : ('#' . $rid)) . ' telah diperbarui.';
-                $links = [
-                    'admin'  => "index.php?r=brand",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-        case 'brand_deleted': {
-                $title = 'Brand Dihapus';
-                $body  = 'Brand #' . $rid . ' telah dihapus.';
-                $links = [
-                    'admin'  => "index.php?r=brand",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-            /* ===== KLIEN (Admin actionable; PM & Mandor info-only; skip admin pelaku) ===== */
-        case 'klien_created': {
-                $title = 'Klien Ditambahkan';
-                $body  = 'Klien ' . ($nm !== '' ? $nm : '(tanpa nama)') . ' berhasil ditambahkan.';
-                $links = [
-                    'admin'  => "index.php?r=klien",       // Admin actionable → halaman main klien
-                    'pm'     => "index.php?r=dashboard",   // info-only
-                    'mandor' => "index.php?r=dashboard",   // info-only
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-        case 'klien_updated': {
-                $title = 'Klien Diperbarui';
-                $body  = 'Klien ' . ($nm !== '' ? $nm : ('#' . $rid)) . ' telah diperbarui.';
-                $links = [
-                    'admin'  => "index.php?r=klien",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-        case 'klien_deleted': {
-                $title = 'Klien Dihapus';
-                $body  = 'Klien #' . $rid . ' telah dihapus.';
-                $links = [
-                    'admin'  => "index.php?r=klien",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId ? [$actorId] : []);
-            }
-
-            /* ===== KARYAWAN (Admin actionable; PM & Mandor info-only; skip admin pelaku) ===== */
-        case 'karyawan_created': {
-                $title = 'Karyawan Ditambahkan';
-                $body  = 'Karyawan ' . (($ctx['nama'] ?? '') !== '' ? $ctx['nama'] : ('#' . ($ctx['id'] ?? ''))) . ' berhasil ditambahkan.';
-                $links = [
-                    'admin'  => "index.php?r=karyawan",     // Admin actionable → halaman main karyawan
-                    'pm'     => "index.php?r=dashboard",    // info-only
-                    'mandor' => "index.php?r=dashboard",    // info-only
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : []);
-            }
-
-        case 'karyawan_updated': {
-                $title = 'Karyawan Diperbarui';
-                $body  = 'Karyawan ' . (($ctx['nama'] ?? '') !== '' ? $ctx['nama'] : ('#' . ($ctx['id'] ?? ''))) . ' telah diperbarui.';
-                $links = [
-                    'admin'  => "index.php?r=karyawan",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : []);
-            }
-
-        case 'karyawan_deleted': {
-                $title = 'Karyawan Dihapus';
-                $body  = 'Karyawan #' . ($ctx['id'] ?? '') . ' telah dihapus.';
-                $links = [
-                    'admin'  => "index.php?r=karyawan",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding($pdo, $title, $body, $links, !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : []);
-            }
-
-            /* ===== PEMBAYARAN (Admin & PM actionable; Mandor info-only; skip actor) ===== */
+            /* ========== PEMBAYARAN ========== */
         case 'pembayaran_created': {
-                $pay   = $ctx['id']        ?? ($ctx['pay_id'] ?? '');
-                $proj  = $ctx['proyek_id'] ?? '';
-                $jenis = $ctx['jenis']     ?? '';
+                // FLOW: pembayaran wajib -> setelah itu PM boleh buat jadwal.
+                // FIX: jangan kirim ke Mandor (mandor baru dikasih notif setelah ada jadwal).
+                $payId = $rid;
+                $jenis = (string)($ctx['jenis'] ?? '');
+
                 $title = 'Pembayaran Ditambahkan';
-                $body  = 'Pembayaran ' . ($pay !== '' ? $pay : '(baru)') .
-                    ($jenis !== '' ? " ({$jenis})" : '') .
-                    ($proj !== '' ? " untuk proyek {$proj}" : '') . ' berhasil ditambahkan.';
+                $body  = "Pembayaran" . ($payId ? " {$payId}" : "") . ($pid ? " untuk proyek {$pid}" : "")
+                    . ($jenis ? " (Jenis: {$jenis})" : "") . " berhasil ditambahkan. PM dapat membuat penjadwalan.";
+
                 $links = [
                     'admin'  => "index.php?r=pembayaran",
-                    'pm'     => "index.php?r=pembayaran",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan&proyek={$pid}" : "index.php?r=penjadwalan",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
         case 'pembayaran_updated': {
-                $pay   = $ctx['id']        ?? ($ctx['pay_id'] ?? '');
-                $proj  = $ctx['proyek_id'] ?? '';
-                $jenis = $ctx['jenis']     ?? '';
+                $payId = $rid;
+                $jenis = (string)($ctx['jenis'] ?? '');
+
                 $title = 'Pembayaran Diperbarui';
-                $body  = 'Pembayaran ' . ($pay !== '' ? $pay : '(tanpa ID)') .
-                    ($jenis !== '' ? " ({$jenis})" : '') .
-                    ($proj !== '' ? " pada proyek {$proj}" : '') . ' telah diperbarui.';
+                $body  = "Pembayaran" . ($payId ? " {$payId}" : "") . ($pid ? " untuk proyek {$pid}" : "")
+                    . ($jenis ? " (Jenis: {$jenis})" : "") . " diperbarui.";
+
                 $links = [
                     'admin'  => "index.php?r=pembayaran",
-                    'pm'     => "index.php?r=pembayaran",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan/detailpembayaran&proyek={$pid}" : "index.php?r=dashboard",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
         case 'pembayaran_deleted': {
-                $pay   = $ctx['id'] ?? ($ctx['pay_id'] ?? '');
+                $payId = $rid;
+
                 $title = 'Pembayaran Dihapus';
-                $body  = 'Pembayaran ' . ($pay !== '' ? "#{$pay}" : '(tanpa ID)') . ' telah dihapus.';
+                $body  = "Pembayaran" . ($payId ? " {$payId}" : "") . " telah dihapus.";
+
                 $links = [
                     'admin'  => "index.php?r=pembayaran",
-                    'pm'     => "index.php?r=pembayaran",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
-            }
-
-            /* ===== PROGRES PROYEK (Admin actionable; PM & Mandor info-only; skip actor) ===== */
-            // case 'progres_created': {
-            //         $pid   = $ctx['proyek_id'] ?? '';
-            //         $pgid  = $ctx['id']        ?? ($ctx['progres_id'] ?? '');
-            //         $pct   = $ctx['persen']    ?? ($ctx['progress'] ?? '');
-            //         $title = 'Progres Proyek Ditambahkan';
-            //         $body  = 'Progres ' . ($pgid !== '' ? "#{$pgid}" : '(baru)') .
-            //             ($pid !== '' ? " untuk proyek {$pid}" : '') .
-            //             ($pct !== '' ? " ({$pct}%)" : '') . ' berhasil ditambahkan.';
-            //         $links = [
-            //             'admin'  => "index.php?r=progres",   // ke main progres (Admin)
-            //             'pm'     => "index.php?r=dashboard", // info-only
-            //             'mandor' => "index.php?r=dashboard", // info-only
-            //             'all'    => "index.php?r=dashboard",
-            //         ];
-            //         return notif_broadcast_excluding(
-            //             $pdo,
-            //             $title,
-            //             $body,
-            //             $links,
-            //             !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],  // skip pelaku
-            //             ['RL001', 'RL002', 'RL003']                                    // target role
-            //         );
-            //     }
-
-            // case 'progres_updated': {
-            //         $pid   = $ctx['proyek_id'] ?? '';
-            //         $pgid  = $ctx['id']        ?? ($ctx['progres_id'] ?? '');
-            //         $pct   = $ctx['persen']    ?? ($ctx['progress'] ?? '');
-            //         $title = 'Progres Proyek Diperbarui';
-            //         $body  = 'Progres ' . ($pgid !== '' ? "#{$pgid}" : '(tanpa ID)') .
-            //             ($pid !== '' ? " pada proyek {$pid}" : '') .
-            //             ($pct !== '' ? " → {$pct}%" : '') . ' telah diperbarui.';
-            //         $links = [
-            //             'admin'  => "index.php?r=progres",
-            //             'pm'     => "index.php?r=dashboard",
-            //             'mandor' => "index.php?r=dashboard",
-            //             'all'    => "index.php?r=dashboard",
-            //         ];
-            //         return notif_broadcast_excluding(
-            //             $pdo,
-            //             $title,
-            //             $body,
-            //             $links,
-            //             !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],
-            //             ['RL001', 'RL002', 'RL003']
-            //         );
-            //     }
-
-            // case 'progres_deleted': {
-            //         $pgid  = $ctx['id'] ?? ($ctx['progres_id'] ?? '');
-            //         $title = 'Progres Proyek Dihapus';
-            //         $body  = 'Progres ' . ($pgid !== '' ? "#{$pgid}" : '(tanpa ID)') . ' telah dihapus.';
-            //         $links = [
-            //             'admin'  => "index.php?r=progres",
-            //             'pm'     => "index.php?r=dashboard",
-            //             'mandor' => "index.php?r=dashboard",
-            //             'all'    => "index.php?r=dashboard",
-            //         ];
-            //         return notif_broadcast_excluding(
-            //             $pdo,
-            //             $title,
-            //             $body,
-            //             $links,
-            //             !empty($ctx['actor_id']) ? [(string)$ctx['actor_id']] : [],
-            //             ['RL001', 'RL002', 'RL003']
-            //         );
-            //     }
-
-            /* ===== PROYEK (Admin info + klik ke halaman proyek; PM & Mandor info-only; skip pelaku) ===== */
-        case 'proyek_created': {
-                $title = 'Proyek Baru Ditambahkan';
-                $body  = "Proyek {$pid} baru saja ditambahkan.";
-                $links = [
-                    'admin'  => "index.php?r=proyek",   // ke halaman main proyek
                     'pm'     => "index.php?r=dashboard",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],           // exclude pelaku CRUD
-                    ['RL001', 'RL002', 'RL003']                     // target: Admin, PM, Mandor
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL001', 'RL002']);
             }
 
-        case 'proyek_updated': {
-                $title = 'Proyek Diperbarui';
-                $body  = "Proyek {$pid} diperbarui.";
-                $links = [
+            /* ========== PENJADWALAN ========== */
+        case 'jadwal_created': {
+                // INILAH momen pertama Mandor boleh dikasih notif (jadwal sudah ada).
+                $title = 'Penjadwalan Dibuat';
+                $body  = ($pid !== '' ? "Proyek {$pid}" : "Proyek") . " sudah memiliki penjadwalan. Anda dapat mulai mengajukan tahapan.";
+
+                // 1) notif ke mandor PIC site (unik)
+                $n1 = 0;
+                if ($picSite !== '') {
+                    $n1 = notify_users($pdo, [$picSite], $title, $body, [
+                        'mandor' => $pid !== '' ? "index.php?r=tahapan-aktif&proyek={$pid}" : "index.php?r=tahapan-aktif",
+                        'all'    => "index.php?r=dashboard",
+                    ]);
+                }
+
+                // 2) admin hanya info (tidak diarahkan ke penjadwalan PM)
+                $n2 = notif_broadcast_excluding($pdo, $title, "Info: {$body}", [
+                    'admin'  => "index.php?r=proyek",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan&proyek={$pid}" : "index.php?r=penjadwalan",
+                    'mandor' => "index.php?r=dashboard",
+                    'all'    => "index.php?r=dashboard",
+                ], $actorId !== '' ? [$actorId] : [], ['RL001']); // hanya admin
+
+                return $n1 + $n2;
+            }
+
+        case 'jadwal_updated': {
+                $title = 'Penjadwalan Diperbarui';
+                $body  = ($pid !== '' ? "Penjadwalan proyek {$pid} diperbarui." : "Penjadwalan diperbarui.");
+
+                $n1 = 0;
+                if ($picSite !== '') {
+                    $n1 = notify_users($pdo, [$picSite], $title, $body, [
+                        'mandor' => $pid !== '' ? "index.php?r=tahapan-aktif&proyek={$pid}" : "index.php?r=tahapan-aktif",
+                        'all'    => "index.php?r=dashboard",
+                    ]);
+                }
+
+                $n2 = notif_broadcast_excluding($pdo, $title, "Info: {$body}", [
+                    'admin'  => "index.php?r=proyek",
+                    'pm'     => $pid !== '' ? "index.php?r=penjadwalan&proyek={$pid}" : "index.php?r=penjadwalan",
+                    'mandor' => "index.php?r=dashboard",
+                    'all'    => "index.php?r=dashboard",
+                ], $actorId !== '' ? [$actorId] : [], ['RL001']);
+
+                return $n1 + $n2;
+            }
+
+        case 'jadwal_deleted': {
+                $title = 'Penjadwalan Dihapus';
+                $body  = ($pid !== '' ? "Penjadwalan proyek {$pid} dihapus." : "Penjadwalan dihapus.");
+
+                // mandor cukup diarahkan ke dashboard (karena tanpa jadwal dia memang belum bisa kerja).
+                $n1 = 0;
+                if ($picSite !== '') {
+                    $n1 = notify_users($pdo, [$picSite], $title, $body, [
+                        'mandor' => "index.php?r=dashboard",
+                        'all'    => "index.php?r=dashboard",
+                    ]);
+                }
+
+                $n2 = notif_broadcast_excluding($pdo, $title, "Info: {$body}", [
                     'admin'  => "index.php?r=proyek",
                     'pm'     => "index.php?r=dashboard",
                     'mandor' => "index.php?r=dashboard",
                     'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+                ], $actorId !== '' ? [$actorId] : [], ['RL001']);
+
+                return $n1 + $n2;
             }
 
-        case 'proyek_deleted': {
-                $title = 'Proyek Dihapus';
-                $body  = "Proyek {$pid} telah dihapus.";
+            /* ========== TAHAPAN (REQUEST / APPROVAL) ========== */
+        case 'tahapan_request': {
+                // Mandor mengajukan -> hanya PM yang perlu aksi approve.
+                $title = 'Pengajuan Tahapan Baru';
+                $body  = ($who ? "{$who} mengajukan " : "Pengajuan ") . ($tahapNm ?: $tahapId ?: 'tahapan')
+                    . ($pid ? " untuk proyek {$pid}." : ".");
+
                 $links = [
-                    'admin'  => "index.php?r=proyek",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
+                    'admin'  => "index.php?r=dashboard", // info saja
+                    'pm'     => "index.php?r=tahapan-approval",
+                    'mandor' => $pid ? "index.php?r=tahapan-aktif&proyek={$pid}" : "index.php?r=tahapan-aktif",
                     'all'    => "index.php?r=dashboard",
                 ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+
+                return notif_broadcast_excluding($pdo, $title, $body, $links, $actorId !== '' ? [$actorId] : [], ['RL002', 'RL001']);
             }
 
-            /* ===== TAHAPAN (Admin info + klik ke halaman Tahapan; PM & Mandor info-only; skip pelaku) ===== */
-        case 'tahapan_created': {
-                $title = 'Tahapan Ditambahkan';
-                $body  = 'Tahapan ' . ($nm !== '' ? $nm : ('#' . $rid)) . ' berhasil ditambahkan.';
-                $links = [
-                    'admin'  => "index.php?r=tahapan",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],       // exclude pelaku CRUD
-                    ['RL001', 'RL002', 'RL003']                  // target: Admin, PM, Mandor
-                );
+        case 'tahapan_approved': {
+                $requestedBy = (string)($ctx['requested_by'] ?? '');
+                $note = (string)($ctx['note'] ?? '');
+
+                $title = 'Tahapan Disetujui';
+                $body  = ($pid ? "Proyek {$pid}: " : "")
+                    . "Pengajuan " . ($tahapNm ?: $tahapId ?: 'tahapan') . " disetujui."
+                    . ($note ? " Catatan: {$note}" : "");
+
+                $n = 0;
+                if ($requestedBy !== '') {
+                    $n += notify_users($pdo, [$requestedBy], $title, $body, [
+                        'mandor' => $pid ? "index.php?r=tahapan-aktif&proyek={$pid}" : "index.php?r=tahapan-aktif",
+                        'all'    => "index.php?r=dashboard",
+                    ]);
+                }
+
+                // admin info saja
+                $n += notif_broadcast_excluding($pdo, $title, "Info: {$body}", [
+                    'admin' => "index.php?r=proyek",
+                    'all'   => "index.php?r=dashboard",
+                ], $actorId !== '' ? [$actorId] : [], ['RL001']);
+
+                return $n;
             }
 
-        case 'tahapan_updated': {
-                $title = 'Tahapan Diperbarui';
-                $body  = 'Tahapan ' . ($nm !== '' ? $nm : ('#' . $rid)) . ' telah diperbarui.';
-                $links = [
-                    'admin'  => "index.php?r=tahapan",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
-            }
+        case 'tahapan_rejected': {
+                $requestedBy = (string)($ctx['requested_by'] ?? '');
+                $note = (string)($ctx['note'] ?? '');
 
-        case 'tahapan_deleted': {
-                $title = 'Tahapan Dihapus';
-                $body  = 'Tahapan ' . ($nm !== '' ? $nm : ('#' . $rid)) . ' telah dihapus.';
-                $links = [
-                    'admin'  => "index.php?r=tahapan",
-                    'pm'     => "index.php?r=dashboard",
-                    'mandor' => "index.php?r=dashboard",
-                    'all'    => "index.php?r=dashboard",
-                ];
-                return notif_broadcast_excluding(
-                    $pdo,
-                    $title,
-                    $body,
-                    $links,
-                    !empty($actorId) ? [$actorId] : [],
-                    ['RL001', 'RL002', 'RL003']
-                );
+                $title = 'Tahapan Ditolak';
+                $body  = ($pid ? "Proyek {$pid}: " : "")
+                    . "Pengajuan " . ($tahapNm ?: $tahapId ?: 'tahapan') . " ditolak."
+                    . ($note ? " Catatan: {$note}" : "");
+
+                $n = 0;
+                if ($requestedBy !== '') {
+                    $n += notify_users($pdo, [$requestedBy], $title, $body, [
+                        'mandor' => $pid ? "index.php?r=tahapan-aktif&proyek={$pid}" : "index.php?r=tahapan-aktif",
+                        'all'    => "index.php?r=dashboard",
+                    ]);
+                }
+
+                // admin info saja
+                $n += notif_broadcast_excluding($pdo, $title, "Info: {$body}", [
+                    'admin' => "index.php?r=proyek",
+                    'all'   => "index.php?r=dashboard",
+                ], $actorId !== '' ? [$actorId] : [], ['RL001']);
+
+                return $n;
             }
 
         default:

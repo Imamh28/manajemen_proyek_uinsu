@@ -126,10 +126,10 @@ $pid = htmlspecialchars($proyekId);
                                     <th style="width:60px" class="text-center">No</th>
                                     <th>Tahapan</th>
                                     <th>Plan Mulai</th>
-                                    <th style="width:120px" class="text-center">Durasi (Hari)</th>
                                     <th>Plan Selesai</th>
                                     <th>Mulai</th>
                                     <th>Selesai</th>
+                                    <th style="width:120px" class="text-center">Durasi (Hari)</th>
                                     <th style="width:140px" class="text-center">Status</th>
                                     <th style="width:110px" class="text-center">Aksi</th>
                                 </tr>
@@ -141,10 +141,10 @@ $pid = htmlspecialchars($proyekId);
                                             <td class="text-center"><?= $no++ ?></td>
                                             <td><?= htmlspecialchars($j['nama_tahapan'] ?? $j['daftar_tahapans_id_tahapan']) ?></td>
                                             <td><?= htmlspecialchars($j['plan_mulai']) ?></td>
-                                            <td class="text-center"><?= (int)$j['durasi'] ?></td>
                                             <td class="text-success"><?= htmlspecialchars($j['plan_selesai']) ?></td>
                                             <td class="text-primary"><?= htmlspecialchars($j['mulai'] ?? '-') ?></td>
                                             <td><?= htmlspecialchars($j['selesai'] ?? '-') ?></td>
+                                            <td class="text-center"><?= (int)$j['durasi'] ?></td>
                                             <td class="text-center">
                                                 <?php
                                                 $st = $j['status'];

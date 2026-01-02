@@ -1,0 +1,5 @@
+{"ts":"2025-12-15T14:32:29+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.export","payload":{"count":3,"search":""}}
+{"ts":"2025-12-15T15:02:19+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.store","payload":{"id":"PRJ","nama":"kantin fak. saintek","quo":"QUO\/2025\/004"}}
+{"ts":"2025-12-15T15:04:23+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"pembayaran.create","payload":{"id_pem_bayaran":"PAY006","jenis_pembayaran":"DP","sub_total":"80000000","pajak_pembayaran":"8000000","total_pembayaran":"88000000","tanggal_jatuh_tempo":"2025-12-16","tanggal_bayar":"2025-12-15","status_pembayaran":"Belum Lunas","proyek_id_proyek":"PRJ","bukti_pembayaran":"uploads\/bukti\/BKT_PAY006_1765807463.png"}}
+{"ts":"2025-12-15T15:11:48+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL003","proyek":"PRJ"}}
+{"ts":"2025-12-15T15:19:56+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL004","proyek":"PRJ"}}

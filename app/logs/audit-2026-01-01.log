@@ -1,0 +1,2 @@
+{"ts":"2026-01-01T18:12:40+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.store","payload":{"id":"PRJ001","nama":"Eskavator Untuk Sumatera","quo":"QUO202601001","pic_sales":"KR003","pic_site":"KR002"}}
+{"ts":"2026-01-01T19:19:20+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"pembayaran.create","payload":{"id":"PAY","proyek":"PRJ001","jenis":"DP","total":"220000000"}}

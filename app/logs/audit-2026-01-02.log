@@ -1,0 +1,8 @@
+{"ts":"2026-01-02T14:30:18+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.store","payload":{"id":"PRJ001","nama":"Sembako Peduli Sumatera","quo":"QUO202601001","pic_sales":"KR003","pic_site":"KR002"}}
+{"ts":"2026-01-02T14:33:43+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"pembayaran.create","payload":{"id":"PAY001","proyek":"PRJ001","jenis":"DP","total":"55000000"}}
+{"ts":"2026-01-02T14:35:02+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL001","proyek":"PRJ001"}}
+{"ts":"2026-01-02T15:52:30+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL002","proyek":"PRJ001"}}
+{"ts":"2026-01-02T17:33:06+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"proyek.store","payload":{"id":"PRJ001","nama":"Sembako Peduli Sumatera","quo":"QUO202601001","pic_sales":"KR003","pic_site":"KR002"}}
+{"ts":"2026-01-02T17:34:10+01:00","user_id":"KR003","user_email":"citra.lestari@example.com","ip":"::1","action":"pembayaran.create","payload":{"id":"PAY001","proyek":"PRJ001","jenis":"DP","total":"55000000"}}
+{"ts":"2026-01-02T17:35:05+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL001","proyek":"PRJ001"}}
+{"ts":"2026-01-02T17:44:36+01:00","user_id":"KR001","user_email":"andi.wijaya@example.com","ip":"::1","action":"jadwal.store","payload":{"id":"JDL002","proyek":"PRJ001"}}

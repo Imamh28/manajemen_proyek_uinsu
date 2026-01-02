@@ -1,8 +1,5 @@
 <?php
-// app/views/admin/proyek/main.php
-// Variables:
-// $proyek, $klienList, $mandorList, $statusEnum, $BASE_URL,
-// $EXISTING_IDS_JSON, $EXISTING_NAMES_JSON, $NEXT_QUOTATION
+// app/views/projek_manajer/proyek/main.php
 
 $__storeErr = $_SESSION['form_errors']['proyek_store'] ?? [];
 $__storeOld = $_SESSION['form_old']['proyek_store'] ?? [];
@@ -11,22 +8,26 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
 <div class="page-content-wrapper">
     <div class="page-content">
 
-        <?php include __DIR__ . '/../../../partials/alert.php' ?>
+        <?php include __DIR__ . '/../../../partials/alert.php'; ?>
 
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
             <div class="breadcrumb-title pe-3">Operasional</div>
             <div class="ps-3">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0 p-0 align-items-center">
-                        <li class="breadcrumb-item"><a href="<?= $BASE_URL ?>index.php?r=dashboard"><ion-icon name="home-outline"></ion-icon></a></li>
+                        <li class="breadcrumb-item">
+                            <a href="<?= $BASE_URL ?>index.php?r=dashboard"><ion-icon name="home-outline"></ion-icon></a>
+                        </li>
                         <li class="breadcrumb-item active" aria-current="page">Manajemen Proyek</li>
                     </ol>
                 </nav>
             </div>
         </div>
 
-        <!-- FORM CREATE: Admin -->
-        <form class="row g-3 live-validate" novalidate action="<?= $BASE_URL ?>index.php?r=proyek/store" method="POST" enctype="multipart/form-data">
+        <!-- FORM CREATE: Project Manager -->
+        <form class="row g-3 live-validate" novalidate
+            action="<?= $BASE_URL ?>index.php?r=proyek/store"
+            method="POST" enctype="multipart/form-data">
             <?= csrf_input(); ?>
 
             <div class="col-md-6">
@@ -67,12 +68,13 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
             <div class="col-md-6">
                 <label class="form-label">Status</label>
                 <input type="text" class="form-control" value="Menunggu" disabled>
-                <div class="form-text">Default status adalah "Menunggu".</div>
+                <div class="form-text">Status awal dipaksa "Menunggu".</div>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Klien</label>
-                <select name="klien_id_klien" required class="form-select <?= isset($__storeErr['klien_id_klien']) ? 'is-invalid' : '' ?>">
+                <select name="klien_id_klien" required
+                    class="form-select <?= isset($__storeErr['klien_id_klien']) ? 'is-invalid' : '' ?>">
                     <option value="">-- pilih klien --</option>
                     <?php foreach ($klienList as $k): ?>
                         <option value="<?= htmlspecialchars($k['id_klien']) ?>"
@@ -87,7 +89,8 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
             <!-- PIC SITE: MANDOR SAJA + unik -->
             <div class="col-md-6">
                 <label class="form-label">PIC Site (Mandor)</label>
-                <select name="karyawan_id_pic_site" required class="form-select <?= isset($__storeErr['karyawan_id_pic_site']) ? 'is-invalid' : '' ?>">
+                <select name="karyawan_id_pic_site" required
+                    class="form-select <?= isset($__storeErr['karyawan_id_pic_site']) ? 'is-invalid' : '' ?>">
                     <option value="">-- pilih mandor --</option>
                     <?php foreach ($mandorList as $m): ?>
                         <option value="<?= htmlspecialchars($m['id_karyawan']) ?>"
@@ -96,13 +99,16 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <div class="invalid-feedback"><?= $__storeErr['karyawan_id_pic_site'] ?? 'PIC Site wajib dipilih (mandor yang belum terikat proyek aktif).' ?></div>
+                <div class="invalid-feedback">
+                    <?= $__storeErr['karyawan_id_pic_site'] ?? 'PIC Site wajib dipilih (mandor yang belum terikat proyek aktif).' ?>
+                </div>
             </div>
 
             <div class="col-12">
                 <div class="alert alert-info py-2 mb-0">
                     <small>
-                        <b>PIC Sales tidak diinput.</b> Sistem otomatis menyimpan PIC Sales!
+                        <b>PIC Sales tidak diinput.</b> Sistem otomatis menyimpan PIC Sales = user yang membuat proyek.
+                        Pembayaran hanya bisa diinput oleh PIC Sales tersebut.
                     </small>
                 </div>
             </div>
@@ -121,15 +127,6 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                 <div class="invalid-feedback">
                     <?= $__storeErr['total_biaya_proyek'] ?? 'Wajib & harus angka.' ?>
                 </div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Gambar Kerja</label>
-                <input type="file"
-                    name="gambar_kerja"
-                    accept=".jpg,.jpeg,.png,.heic"
-                    class="form-control <?= isset($__storeErr['gambar_kerja']) ? 'is-invalid' : '' ?>">
-                <div class="invalid-feedback"><?= $__storeErr['gambar_kerja'] ?? 'Tipe file harus JPG/JPEG/PNG/HEIC.' ?></div>
             </div>
 
             <div class="col-12">
@@ -167,6 +164,15 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                     class="form-control <?= isset($__storeErr['tanggal_selesai']) ? 'is-invalid' : '' ?>"
                     value="<?= htmlspecialchars($__storeOld['tanggal_selesai'] ?? '') ?>">
                 <div class="invalid-feedback"><?= $__storeErr['tanggal_selesai'] ?? 'Tanggal wajib & valid.' ?></div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Gambar Kerja</label>
+                <input type="file"
+                    name="gambar_kerja"
+                    accept=".jpg,.jpeg,.png,.heic"
+                    class="form-control <?= isset($__storeErr['gambar_kerja']) ? 'is-invalid' : '' ?>">
+                <div class="invalid-feedback"><?= $__storeErr['gambar_kerja'] ?? 'Tipe file harus JPG/JPEG/PNG/HEIC.' ?></div>
             </div>
 
             <div class="col-12">
@@ -222,12 +228,7 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                                                 <a class="ms-3" href="<?= $BASE_URL ?>index.php?r=proyek/edit&id=<?= urlencode($p['id_proyek']) ?>">
                                                     <ion-icon name="create-outline"></ion-icon>
                                                 </a>
-                                                <a class="ms-3" href="javascript:void(0)"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#modalHapus"
-                                                    data-id="<?= htmlspecialchars($p['id_proyek']) ?>">
-                                                    <ion-icon name="trash-outline"></ion-icon>
-                                                </a>
+                                                <!-- PM: tidak ada tombol hapus -->
                                             </div>
                                         </td>
                                     </tr>
@@ -243,40 +244,9 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
             </div>
         </div>
 
-        <!-- Modal Hapus (ADMIN) -->
-        <div class="modal fade" id="modalHapus" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form class="modal-content" method="POST" action="<?= $BASE_URL ?>index.php?r=proyek/delete">
-                    <?= csrf_input(); ?>
-                    <div class="modal-header">
-                        <h5 class="modal-title">Konfirmasi Hapus</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="hapus_id" id="hapus_id">
-                        Hapus proyek ini?
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-danger">Hapus</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         <script>
             (() => {
-                // ========= Modal Hapus =========
-                const modalHapus = document.getElementById('modalHapus');
-                if (modalHapus) {
-                    modalHapus.addEventListener('show.bs.modal', function(event) {
-                        const btn = event.relatedTarget;
-                        const id = btn.getAttribute('data-id');
-                        document.getElementById('hapus_id').value = id;
-                    });
-                }
-
-                // ========= Live Validate + Rupiah Formatter =========
+                // live validate
                 window.PROJ_EXISTING_IDS = <?= $EXISTING_IDS_JSON ?? '[]' ?>;
                 window.PROJ_EXISTING_NAMES = <?= $EXISTING_NAMES_JSON ?? '[]' ?>;
 
@@ -285,7 +255,6 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                 const formatIdNumber = (digits) => {
                     if (!digits) return '';
                     try {
-                        // Intl bisa format BigInt di browser modern
                         return new Intl.NumberFormat('id-ID').format(BigInt(digits));
                     } catch (e) {
                         const n = parseInt(digits, 10) || 0;
@@ -296,7 +265,6 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                 const setCaretByDigitIndex = (el, digitIndex) => {
                     const v = el.value || '';
                     if (digitIndex <= 0) {
-                        // taruh kursor setelah "Rp "
                         const p = v.startsWith('Rp ') ? 3 : 0;
                         el.setSelectionRange(p, p);
                         return;
@@ -306,8 +274,7 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                         if (/\d/.test(v[i])) {
                             seen++;
                             if (seen === digitIndex) {
-                                const pos = i + 1; // setelah digit ke-n
-                                el.setSelectionRange(pos, pos);
+                                el.setSelectionRange(i + 1, i + 1);
                                 return;
                             }
                         }
@@ -319,7 +286,6 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
                     const rupiahInputs = form.querySelectorAll('input[data-currency="rupiah"]');
 
                     rupiahInputs.forEach((el) => {
-                        // format saat load (edit / old session)
                         const initDigits = digitsOnly(el.value);
                         el.value = initDigits ? ('Rp ' + formatIdNumber(initDigits)) : '';
 
@@ -342,22 +308,16 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
 
                             try {
                                 setCaretByDigitIndex(el, digitsBefore);
-                            } catch (e) {
-                                // ignore
-                            }
-
+                            } catch (e) {}
                             el.__fmtLock = false;
                         };
 
                         el.addEventListener('input', formatNow);
-
-                        // kalau user hapus semua angka, kosongkan total
                         el.addEventListener('blur', () => {
                             if (!digitsOnly(el.value)) el.value = '';
                         });
                     });
 
-                    // saat submit: kirim angka murni (server-side aman)
                     form.addEventListener('submit', () => {
                         rupiahInputs.forEach(el => {
                             el.value = digitsOnly(el.value);

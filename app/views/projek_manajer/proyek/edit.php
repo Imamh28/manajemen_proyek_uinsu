@@ -1,5 +1,5 @@
 <?php
-// app/views/admin/proyek/edit.php
+// app/views/projek_manajer/proyek/edit.php
 
 $__updErr = $_SESSION['form_errors']['proyek_update'] ?? [];
 $__updOld = $_SESSION['form_old']['proyek_update'] ?? [];
@@ -19,8 +19,12 @@ $esc = fn($v) => htmlspecialchars((string)$v);
             <div class="breadcrumb-title pe-3">Operasional</div>
             <div class="ps-3">
                 <ol class="breadcrumb mb-0 p-0 align-items-center">
-                    <li class="breadcrumb-item"><a href="<?= $BASE_URL ?>index.php?r=dashboard"><ion-icon name="home-outline"></ion-icon></a></li>
-                    <li class="breadcrumb-item"><a href="<?= $BASE_URL ?>index.php?r=proyek">Manajemen Proyek</a></li>
+                    <li class="breadcrumb-item">
+                        <a href="<?= $BASE_URL ?>index.php?r=dashboard"><ion-icon name="home-outline"></ion-icon></a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="<?= $BASE_URL ?>index.php?r=proyek">Manajemen Proyek</a>
+                    </li>
                     <li class="breadcrumb-item active">Edit</li>
                 </ol>
             </div>
@@ -31,8 +35,9 @@ $esc = fn($v) => htmlspecialchars((string)$v);
                 <h5 class="card-title">Edit Proyek: <?= $esc($proyek['nama_proyek'] ?? '') ?></h5>
                 <hr />
 
-                <form class="row g-3 live-validate" novalidate method="POST"
-                    action="<?= $BASE_URL ?>index.php?r=proyek/update" enctype="multipart/form-data">
+                <form class="row g-3 live-validate" novalidate
+                    method="POST" action="<?= $BASE_URL ?>index.php?r=proyek/update"
+                    enctype="multipart/form-data">
                     <?= csrf_input(); ?>
                     <input type="hidden" name="id_proyek" value="<?= $esc($proyek['id_proyek'] ?? '') ?>">
 
@@ -57,7 +62,8 @@ $esc = fn($v) => htmlspecialchars((string)$v);
 
                     <div class="col-md-6">
                         <label class="form-label">Klien</label>
-                        <select name="klien_id_klien" required class="form-select <?= isset($__updErr['klien_id_klien']) ? 'is-invalid' : '' ?>">
+                        <select name="klien_id_klien" required
+                            class="form-select <?= isset($__updErr['klien_id_klien']) ? 'is-invalid' : '' ?>">
                             <option value="">-- pilih klien --</option>
                             <?php foreach ($klienList as $k): ?>
                                 <option value="<?= $esc($k['id_klien']) ?>" <?= ($raw('klien_id_klien') == $k['id_klien']) ? 'selected' : '' ?>>
@@ -70,7 +76,8 @@ $esc = fn($v) => htmlspecialchars((string)$v);
 
                     <div class="col-md-6">
                         <label class="form-label">PIC Site (Mandor)</label>
-                        <select name="karyawan_id_pic_site" required class="form-select <?= isset($__updErr['karyawan_id_pic_site']) ? 'is-invalid' : '' ?>">
+                        <select name="karyawan_id_pic_site" required
+                            class="form-select <?= isset($__updErr['karyawan_id_pic_site']) ? 'is-invalid' : '' ?>">
                             <option value="">-- pilih mandor --</option>
                             <?php foreach ($mandorList as $m): ?>
                                 <option value="<?= $esc($m['id_karyawan']) ?>" <?= ($raw('karyawan_id_pic_site') == $m['id_karyawan']) ? 'selected' : '' ?>>
@@ -153,17 +160,11 @@ $esc = fn($v) => htmlspecialchars((string)$v);
                         <?php endif; ?>
                     </div>
 
-                    <!-- ADMIN: bisa ubah status -->
+                    <!-- PM TIDAK BOLEH UBAH STATUS MANUAL -->
                     <div class="col-md-6">
                         <label class="form-label">Status</label>
-                        <select name="status" required class="form-select <?= isset($__updErr['status']) ? 'is-invalid' : '' ?>">
-                            <?php foreach ($statusEnum as $s): ?>
-                                <option value="<?= $esc($s) ?>" <?= ($raw('status') === $s) ? 'selected' : '' ?>>
-                                    <?= $esc($s) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div class="invalid-feedback"><?= $__updErr['status'] ?? 'Status wajib dipilih.' ?></div>
+                        <input type="text" class="form-control" value="<?= $esc($raw('status')) ?>" disabled>
+                        <div class="form-text">Status akan berubah otomatis saat progres/tahapan mulai berjalan.</div>
                     </div>
 
                     <div class="col-12">
@@ -203,8 +204,7 @@ $esc = fn($v) => htmlspecialchars((string)$v);
                         if (/\d/.test(v[i])) {
                             seen++;
                             if (seen === digitIndex) {
-                                const pos = i + 1;
-                                el.setSelectionRange(pos, pos);
+                                el.setSelectionRange(i + 1, i + 1);
                                 return;
                             }
                         }
@@ -239,7 +239,6 @@ $esc = fn($v) => htmlspecialchars((string)$v);
                             try {
                                 setCaretByDigitIndex(el, digitsBefore);
                             } catch (e) {}
-
                             el.__fmtLock = false;
                         };
 
