@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 30, 2025 at 02:03 PM
+-- Generation Time: Jan 04, 2026 at 03:52 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -20,27 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `manajemen_proyek_db`
 --
-
--- --------------------------------------------------------
-
---
--- Table structure for table `brand`
---
-
-CREATE TABLE `brand` (
-  `id_brand` int(11) NOT NULL,
-  `nama_brand` varchar(45) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `brand`
---
-
-INSERT INTO `brand` (`id_brand`, `nama_brand`) VALUES
-(1, 'Maju Properti'),
-(2, 'Mundur Logistik'),
-(3, 'Sejahtera Snack'),
-(4, 'Sejahtera Minuman');
 
 -- --------------------------------------------------------
 
@@ -88,8 +67,7 @@ CREATE TABLE `jadwal_proyeks` (
 --
 
 INSERT INTO `jadwal_proyeks` (`id_jadwal`, `plan_mulai`, `mulai`, `durasi`, `plan_selesai`, `selesai`, `status`, `proyek_id_proyek`, `daftar_tahapans_id_tahapan`) VALUES
-('JDL001', '2025-09-30', '2025-09-20', 17, '2025-10-16', '2025-09-20', 'Lebih Cepat', 'PRJ003', 'TH01'),
-('JDL002', '2025-09-23', NULL, 2, '2025-09-24', NULL, 'Belum Mulai', 'PRJ003', 'TH02');
+('JDL001', '2026-01-04', '2026-01-03', 4, '2026-01-07', '2026-01-03', 'Lebih Cepat', 'PRJ001', 'TH01');
 
 -- --------------------------------------------------------
 
@@ -210,59 +188,32 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`id`, `user_id`, `title`, `body`, `link`, `link_admin`, `link_pm`, `link_mandor`, `is_read`, `created_at`) VALUES
-(2, 'KR006', 'Jadwal Ditambahkan', 'Jadwal JDL untuk proyek PRJ002 berhasil ditambahkan.', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', 0, '2025-09-02 01:29:16'),
-(5, 'KR004', 'Jadwal Ditambahkan', 'Jadwal JDL untuk proyek PRJ002 berhasil ditambahkan.', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', 0, '2025-09-02 01:29:16'),
-(6, 'KR005', 'Jadwal Ditambahkan', 'Jadwal JDL untuk proyek PRJ002 berhasil ditambahkan.', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', '/manajemen_proyek_uinsu/app/index.php?r=penjadwalan&proyek=PRJ002', 0, '2025-09-02 01:29:16'),
-(8, 'KR006', 'Proyek Baru Ditambahkan', 'Proyek PRJ003 baru saja ditambahkan. PM harap membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ003', 'index.php?r=dashboard', 0, '2025-09-18 20:36:33'),
-(11, 'KR004', 'Proyek Baru Ditambahkan', 'Proyek PRJ003 baru saja ditambahkan. PM harap membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ003', 'index.php?r=dashboard', 0, '2025-09-18 20:36:33'),
-(12, 'KR005', 'Proyek Baru Ditambahkan', 'Proyek PRJ003 baru saja ditambahkan. PM harap membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ003', 'index.php?r=dashboard', 0, '2025-09-18 20:36:33'),
-(14, 'KR004', 'Pembayaran Dihapus', 'Pembayaran #PAY006 telah dihapus.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=pembayaran', 'index.php?r=dashboard', 0, '2025-09-19 01:27:32'),
-(15, 'KR005', 'Pembayaran Dihapus', 'Pembayaran #PAY006 telah dihapus.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=pembayaran', 'index.php?r=dashboard', 0, '2025-09-19 01:27:32'),
-(17, 'KR006', 'Pembayaran Dihapus', 'Pembayaran #PAY006 telah dihapus.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=pembayaran', 'index.php?r=dashboard', 0, '2025-09-19 01:27:32'),
-(19, 'KR004', 'Karyawan Ditambahkan', 'Karyawan M Ariyo Syahraza berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=karyawan', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-19 15:00:14'),
-(20, 'KR005', 'Karyawan Ditambahkan', 'Karyawan M Ariyo Syahraza berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=karyawan', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-19 15:00:14'),
-(22, 'KR006', 'Karyawan Ditambahkan', 'Karyawan M Ariyo Syahraza berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=karyawan', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-19 15:00:14'),
-(23, 'KR007', 'Karyawan Ditambahkan', 'Karyawan M Ariyo Syahraza berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=karyawan', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-19 15:00:14'),
-(25, 'KR007', 'Proyek Diperbarui', 'Proyek PRJ002 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ002', 'index.php?r=dashboard', 0, '2025-09-20 00:08:41'),
-(26, 'KR006', 'Proyek Diperbarui', 'Proyek PRJ002 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ002', 'index.php?r=dashboard', 0, '2025-09-20 00:08:41'),
-(29, 'KR004', 'Proyek Diperbarui', 'Proyek PRJ002 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ002', 'index.php?r=dashboard', 0, '2025-09-20 00:08:41'),
-(30, 'KR005', 'Proyek Diperbarui', 'Proyek PRJ002 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ002', 'index.php?r=dashboard', 0, '2025-09-20 00:08:41'),
-(32, 'KR007', 'Proyek Diperbarui', 'Proyek PRJ001 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2025-09-20 01:49:06'),
-(33, 'KR006', 'Proyek Diperbarui', 'Proyek PRJ001 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2025-09-20 01:49:06'),
-(36, 'KR004', 'Proyek Diperbarui', 'Proyek PRJ001 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2025-09-20 01:49:06'),
-(37, 'KR005', 'Proyek Diperbarui', 'Proyek PRJ001 diperbarui. PM harap meninjau penjadwalan.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2025-09-20 01:49:06'),
-(39, 'KR004', 'Klien Diperbarui', 'Klien PT. Maju Mundur telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:38:56'),
-(40, 'KR005', 'Klien Diperbarui', 'Klien PT. Maju Mundur telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:38:56'),
-(42, 'KR006', 'Klien Diperbarui', 'Klien PT. Maju Mundur telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:38:56'),
-(43, 'KR007', 'Klien Diperbarui', 'Klien PT. Maju Mundur telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:38:56'),
-(45, 'KR004', 'Klien Diperbarui', 'Klien CV. Sejahtera Bersama telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:39:10'),
-(46, 'KR005', 'Klien Diperbarui', 'Klien CV. Sejahtera Bersama telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:39:10'),
-(48, 'KR006', 'Klien Diperbarui', 'Klien CV. Sejahtera Bersama telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:39:10'),
-(49, 'KR007', 'Klien Diperbarui', 'Klien CV. Sejahtera Bersama telah diperbarui.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:39:10'),
-(51, 'KR004', 'Klien Ditambahkan', 'Klien PT. Wahana Wihana berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:41:34'),
-(52, 'KR005', 'Klien Ditambahkan', 'Klien PT. Wahana Wihana berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:41:34'),
-(54, 'KR006', 'Klien Ditambahkan', 'Klien PT. Wahana Wihana berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:41:34'),
-(55, 'KR007', 'Klien Ditambahkan', 'Klien PT. Wahana Wihana berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=klien', 'index.php?r=dashboard', 'index.php?r=dashboard', 0, '2025-09-20 13:41:34'),
-(57, 'KR007', 'Jadwal Ditambahkan', 'Jadwal JDL001 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:30:40'),
-(58, 'KR006', 'Jadwal Ditambahkan', 'Jadwal JDL001 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:30:40'),
-(61, 'KR004', 'Jadwal Ditambahkan', 'Jadwal JDL001 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:30:40'),
-(62, 'KR005', 'Jadwal Ditambahkan', 'Jadwal JDL001 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:30:40'),
-(64, 'KR007', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:39:14'),
-(65, 'KR006', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:39:14'),
-(68, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:39:14'),
-(69, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:39:14'),
-(72, 'KR007', 'Jadwal Ditambahkan', 'Jadwal JDL002 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:43:34'),
-(73, 'KR006', 'Jadwal Ditambahkan', 'Jadwal JDL002 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:43:34'),
-(76, 'KR004', 'Jadwal Ditambahkan', 'Jadwal JDL002 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:43:34'),
-(77, 'KR005', 'Jadwal Ditambahkan', 'Jadwal JDL002 untuk proyek PRJ003 berhasil dibuat.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-aktif&proyek=PRJ003', 0, '2025-09-20 23:43:34'),
-(79, 'KR007', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:27'),
-(80, 'KR006', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:27'),
-(83, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:27'),
-(84, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH01 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:27'),
-(86, 'KR007', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH02 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:47'),
-(87, 'KR006', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH02 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:47'),
-(90, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH02 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:47'),
-(91, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan tahapan TH02 untuk proyek PRJ003.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=dashboard', 0, '2025-09-20 23:44:47');
+(131, 'KR004', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 baru saja ditambahkan. Status awal: Menunggu.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 00:12:40'),
+(132, 'KR005', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 baru saja ditambahkan. Status awal: Menunggu.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 00:12:40'),
+(134, 'KR006', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 baru saja ditambahkan. Status awal: Menunggu.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 00:12:40'),
+(135, 'KR007', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 baru saja ditambahkan. Status awal: Menunggu.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 00:12:40'),
+(137, 'KR004', 'Pembayaran Ditambahkan', 'Pembayaran PAY (DP) untuk proyek PRJ001 berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=pembayaran', 'index.php?r=dashboard', 0, '2026-01-02 01:19:20'),
+(138, 'KR005', 'Pembayaran Ditambahkan', 'Pembayaran PAY (DP) untuk proyek PRJ001 berhasil ditambahkan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=pembayaran', 'index.php?r=dashboard', 0, '2026-01-02 01:19:20'),
+(140, 'KR004', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Peduli Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 20:30:18'),
+(141, 'KR005', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Peduli Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 20:30:18'),
+(143, 'KR004', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 20:33:43'),
+(144, 'KR005', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 20:33:43'),
+(149, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 20:49:54'),
+(150, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 20:49:54'),
+(156, 'KR004', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Peduli Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 23:33:06'),
+(157, 'KR005', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Peduli Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 23:33:06'),
+(159, 'KR004', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 23:34:10'),
+(160, 'KR005', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-02 23:34:10'),
+(165, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 23:37:50'),
+(166, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 23:37:50'),
+(173, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH02 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 23:45:58'),
+(174, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH02 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-02 23:45:58'),
+(178, 'KR004', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Untuk Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-03 14:36:58'),
+(179, 'KR005', 'Proyek Baru Ditambahkan', 'Proyek PRJ001 (Sembako Untuk Sumatera) ditambahkan. Status: Menunggu. Lakukan pembayaran terlebih dahulu, setelah itu PM membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=proyek', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-03 14:36:58'),
+(181, 'KR004', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-03 14:37:44'),
+(182, 'KR005', 'Pembayaran Ditambahkan', 'Pembayaran PAY001 untuk proyek PRJ001 (Jenis: DP) berhasil ditambahkan. PM dapat membuat penjadwalan.', 'index.php?r=dashboard', 'index.php?r=pembayaran', 'index.php?r=penjadwalan&proyek=PRJ001', 'index.php?r=dashboard', 0, '2026-01-03 14:37:44'),
+(187, 'KR004', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-03 14:40:37'),
+(188, 'KR005', 'Pengajuan Tahapan Baru', 'Mandor mengajukan TH01 untuk proyek PRJ001.', 'index.php?r=dashboard', 'index.php?r=dashboard', 'index.php?r=tahapan-approval', 'index.php?r=tahapan-aktif&proyek=PRJ001', 0, '2026-01-03 14:40:37');
 
 -- --------------------------------------------------------
 
@@ -288,11 +239,7 @@ CREATE TABLE `pembayarans` (
 --
 
 INSERT INTO `pembayarans` (`id_pem_bayaran`, `jenis_pembayaran`, `sub_total`, `pajak_pembayaran`, `total_pembayaran`, `tanggal_jatuh_tempo`, `tanggal_bayar`, `status_pembayaran`, `bukti_pembayaran`, `proyek_id_proyek`) VALUES
-('PAY001', 'DP', 7500000.00, 750000.00, 8250000.00, '2025-07-10', '2025-07-05', 'Lunas', 'bukti/pay001.jpg', 'PRJ001'),
-('PAY002', 'DP', 100000000.00, 10000000.00, 110000000.00, '2025-06-20', '2025-06-18', 'Lunas', 'bukti/pay002.jpg', 'PRJ002'),
-('PAY003', 'Termin', 10000000000.00, 1000000000.00, 11000000000.00, '2025-08-20', '2025-08-30', 'Belum Lunas', NULL, 'PRJ002'),
-('PAY004', 'Pelunasan', 120000.00, 12000.00, 132000.00, '2025-09-19', '2025-09-15', 'Lunas', 'uploads/bukti/BKT_PAY004_1758217205.png', 'PRJ001'),
-('PAY005', 'DP', 10000000.00, 1000000.00, 11000000.00, '2025-11-21', '2025-09-30', 'Belum Lunas', 'uploads/bukti/BKT_PAY005_1758217763.png', 'PRJ003');
+('PAY001', 'DP', 50000000.00, 5000000.00, 55000000.00, '2026-01-31', '2026-01-03', 'Belum Lunas', 'uploads/bukti/BKT_PAY001_20260103_083744_a5b8f1.png', 'PRJ001');
 
 -- --------------------------------------------------------
 
@@ -312,7 +259,6 @@ CREATE TABLE `proyek` (
   `current_tahapan_id` varchar(255) DEFAULT NULL,
   `quotation` varchar(255) DEFAULT NULL,
   `gambar_kerja` varchar(255) DEFAULT NULL,
-  `brand_id_brand` int(11) NOT NULL,
   `karyawan_id_pic_sales` varchar(45) NOT NULL,
   `karyawan_id_pic_site` varchar(45) NOT NULL,
   `klien_id_klien` varchar(45) NOT NULL
@@ -322,10 +268,8 @@ CREATE TABLE `proyek` (
 -- Dumping data for table `proyek`
 --
 
-INSERT INTO `proyek` (`id_proyek`, `nama_proyek`, `deskripsi`, `total_biaya_proyek`, `alamat`, `tanggal_mulai`, `tanggal_selesai`, `status`, `current_tahapan_id`, `quotation`, `gambar_kerja`, `brand_id_brand`, `karyawan_id_pic_sales`, `karyawan_id_pic_site`, `klien_id_klien`) VALUES
-('PRJ001', 'Website E-commerce Snack', 'Pembuatan website e-commerce untuk produk snack Sejahtera.', 1500000000.00, 'Online', '2025-07-01', '2025-09-01', 'Berjalan', NULL, 'QUO/2025/001', 'uploads/proyek/proyek_20250919_204906_1fe40e.jpg', 3, 'KR002', 'KR001', 'KL002'),
-('PRJ002', 'Renovasi Kantor Maju', 'Renovasi interior kantor pusat PT. Maju Mundur.', 25000000000.00, 'Jl. Jend. Sudirman Kav. 52-53, Jakarta', '2025-06-15', '2025-09-27', 'Berjalan', NULL, 'QUO/2025/002', 'uploads/proyek/proyek_20250919_190841_c3ff5b.png', 1, 'KR002', 'KR004', 'KL001'),
-('PRJ003', 'Desain Arsitektur Kopikuni', 'Ini adalah sebuah desain arsitektur', 2500000000.00, 'Jalan Braga No. 5', '2025-09-18', '2025-10-17', 'Menunggu', NULL, 'QUO/2025/003', 'uploads/proyek/proyek_20250918_153633_92b094.jpg', 1, 'KR005', 'KR006', 'KL002');
+INSERT INTO `proyek` (`id_proyek`, `nama_proyek`, `deskripsi`, `total_biaya_proyek`, `alamat`, `tanggal_mulai`, `tanggal_selesai`, `status`, `current_tahapan_id`, `quotation`, `gambar_kerja`, `karyawan_id_pic_sales`, `karyawan_id_pic_site`, `klien_id_klien`) VALUES
+('PRJ001', 'Sembako Untuk Sumatera', 'Program ini hasil dari kepedulian warga Indonesia untuk Sumatera', 110000000.00, 'Jl. Tri Dharma No.9, Padang Bulan, Kec. Medan Baru, Kota Medan, Sumatera Utara 20222', '2026-01-03', '2026-01-31', 'Berjalan', 'TH02', 'QUO202601001', 'uploads/proyek/proyek_20260103_083658_95bc73.png', 'KR003', 'KR002', 'KL002');
 
 -- --------------------------------------------------------
 
@@ -388,8 +332,9 @@ CREATE TABLE `tahapan_update_requests` (
   `requested_by` varchar(45) NOT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `request_note` text DEFAULT NULL,
+  `bukti_foto` varchar(255) DEFAULT NULL,
+  `bukti_dokumen` varchar(255) DEFAULT NULL,
   `review_note` text DEFAULT NULL,
-  `note` text DEFAULT NULL,
   `requested_at` datetime NOT NULL DEFAULT current_timestamp(),
   `reviewed_by` varchar(45) DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL
@@ -399,20 +344,12 @@ CREATE TABLE `tahapan_update_requests` (
 -- Dumping data for table `tahapan_update_requests`
 --
 
-INSERT INTO `tahapan_update_requests` (`id`, `proyek_id_proyek`, `requested_tahapan_id`, `requested_by`, `status`, `request_note`, `review_note`, `note`, `requested_at`, `reviewed_by`, `reviewed_at`) VALUES
-(3, 'PRJ003', 'TH01', 'KR002', 'approved', 'Saya sudah melakukan Perencanaan', NULL, 'Saya sudah melakukan Perencanaan', '2025-09-20 23:39:14', 'KR001', '2025-09-20 23:40:16'),
-(4, 'PRJ003', 'TH01', 'KR002', 'rejected', '', NULL, '', '2025-09-20 23:44:27', 'KR001', '2025-09-20 23:53:04'),
-(5, 'PRJ003', 'TH02', 'KR002', 'rejected', 'Kamu Terlalu Cepat', NULL, 'Kamu Terlalu Cepat', '2025-09-20 23:44:47', 'KR001', '2025-09-20 23:53:32');
+INSERT INTO `tahapan_update_requests` (`id`, `proyek_id_proyek`, `requested_tahapan_id`, `requested_by`, `status`, `request_note`, `bukti_foto`, `bukti_dokumen`, `review_note`, `requested_at`, `reviewed_by`, `reviewed_at`) VALUES
+(12, 'PRJ001', 'TH01', 'KR002', 'approved', 'Saya sudah menyelesaikan tahap perencanaan bersama dengan stakeholder terkait', 'uploads/tahapan/buktifoto/FOTO_TAHAP_PRJ001_TH01_20260103_084037_e72fe555.png', 'uploads/tahapan/buktidokumen/DOC_TAHAP_PRJ001_TH01_20260103_084037_2629cc08.pdf', 'Saya suka dengan prosesnya, lanjutkan ya', '2026-01-03 14:40:37', 'KR001', '2026-01-03 16:16:28');
 
 --
 -- Indexes for dumped tables
 --
-
---
--- Indexes for table `brand`
---
-ALTER TABLE `brand`
-  ADD PRIMARY KEY (`id_brand`);
 
 --
 -- Indexes for table `daftar_tahapans`
@@ -474,7 +411,6 @@ ALTER TABLE `pembayarans`
 --
 ALTER TABLE `proyek`
   ADD PRIMARY KEY (`id_proyek`),
-  ADD KEY `fk_proyek_brand_idx` (`brand_id_brand`),
   ADD KEY `fk_proyek_sales_idx` (`karyawan_id_pic_sales`),
   ADD KEY `fk_proyek_site_idx` (`karyawan_id_pic_site`),
   ADD KEY `fk_proyek_klien_idx` (`klien_id_klien`),
@@ -509,12 +445,6 @@ ALTER TABLE `tahapan_update_requests`
 --
 
 --
--- AUTO_INCREMENT for table `brand`
---
-ALTER TABLE `brand`
-  MODIFY `id_brand` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
-
---
 -- AUTO_INCREMENT for table `kategori_menus`
 --
 ALTER TABLE `kategori_menus`
@@ -530,13 +460,13 @@ ALTER TABLE `menus`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=191;
 
 --
 -- AUTO_INCREMENT for table `tahapan_update_requests`
 --
 ALTER TABLE `tahapan_update_requests`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- Constraints for dumped tables
@@ -571,7 +501,6 @@ ALTER TABLE `pembayarans`
 -- Constraints for table `proyek`
 --
 ALTER TABLE `proyek`
-  ADD CONSTRAINT `fk_proyek_brand` FOREIGN KEY (`brand_id_brand`) REFERENCES `brand` (`id_brand`),
   ADD CONSTRAINT `fk_proyek_current_tahapan` FOREIGN KEY (`current_tahapan_id`) REFERENCES `daftar_tahapans` (`id_tahapan`),
   ADD CONSTRAINT `fk_proyek_klien` FOREIGN KEY (`klien_id_klien`) REFERENCES `klien` (`id_klien`),
   ADD CONSTRAINT `fk_proyek_sales` FOREIGN KEY (`karyawan_id_pic_sales`) REFERENCES `karyawan` (`id_karyawan`),
