@@ -368,7 +368,8 @@ class ProyekController
 
     public function delete(): void
     {
-        require_roles(['RL001'], $this->baseUrl);
+        // ✅ Admin & Project Manager sama-sama kena guard
+        require_roles(['RL001', 'RL002'], $this->baseUrl);
 
         if (!csrf_verify($_POST['_csrf'] ?? '')) {
             $_SESSION['error'] = 'Sesi berakhir atau token tidak valid.';
@@ -383,14 +384,75 @@ class ProyekController
             exit;
         }
 
+        // mode
+        $force = (($_POST['force'] ?? '') === '1');
+
+        // opsi force delete (checkbox)
+        $delJadwal    = (($_POST['del_jadwal'] ?? '') === '1');
+        $delBayar     = (($_POST['del_pembayaran'] ?? '') === '1');
+        $delRequests  = (($_POST['del_requests'] ?? '') === '1');
+
         try {
-            $can = $this->model->canDelete($id);
-            if (!$can) {
-                $_SESSION['error'] = 'Proyek memiliki relasi (jadwal/pembayaran/permintaan tahapan). Tidak dapat dihapus.';
+            $rel = $this->model->relationsSummary($id);
+            $hasRel = ($rel['jadwal'] + $rel['pembayaran'] + $rel['tahapan_requests']) > 0;
+
+            if ($hasRel && !$force) {
+                // simpan detail untuk ditampilkan sebagai alert + tombol "force delete"
+                $_SESSION['delete_blocked_proyek'] = [
+                    'id' => $id,
+                    'rel' => $rel,
+                ];
+
+                $_SESSION['error'] =
+                    'Proyek tidak bisa dihapus karena memiliki relasi: ' .
+                    'Jadwal (' . $rel['jadwal'] . '), ' .
+                    'Pembayaran (' . $rel['pembayaran'] . '), ' .
+                    'Permintaan Tahapan (' . $rel['tahapan_requests'] . '). ' .
+                    'Gunakan opsi "Hapus Proyek + Data Terkait" jika memang ingin memaksa.';
+
                 header("Location: {$this->baseUrl}index.php?r=proyek");
                 exit;
             }
 
+            if ($hasRel && $force) {
+                // kalau ada relasi, tapi user tidak centang penghapusan relasi itu -> tolak
+                $missing = [];
+                if ($rel['jadwal'] > 0 && !$delJadwal) $missing[] = 'jadwal';
+                if ($rel['pembayaran'] > 0 && !$delBayar) $missing[] = 'pembayaran';
+                if ($rel['tahapan_requests'] > 0 && !$delRequests) $missing[] = 'tahapan_update_requests';
+
+                if ($missing) {
+                    $_SESSION['error'] =
+                        'Gagal force delete: masih ada relasi yang belum Anda izinkan untuk dihapus (' .
+                        implode(', ', $missing) . '). Centang semua relasi yang ada.';
+                    header("Location: {$this->baseUrl}index.php?r=proyek");
+                    exit;
+                }
+
+                $ok = $this->model->deleteCascade($id, [
+                    'jadwal' => $delJadwal,
+                    'pembayaran' => $delBayar,
+                    'tahapan_requests' => $delRequests,
+                ]);
+
+                if ($ok) {
+                    audit_log('proyek.delete_force', ['id' => $id, 'rel' => $rel]);
+                    $_SESSION['success'] = 'Proyek berhasil dihapus BESERTA data terkaitnya.';
+
+                    $actorKid = $this->currentKaryawanId();
+                    notif_event($this->pdo, 'proyek_deleted', [
+                        'proyek_id' => $id,
+                        'actor_id'  => $actorKid !== '' ? $actorKid : '',
+                    ]);
+                } else {
+                    $_SESSION['error'] = 'Gagal menghapus proyek (force).';
+                }
+
+                header("Location: {$this->baseUrl}index.php?r=proyek");
+                exit;
+            }
+
+            // no relation -> delete normal
             if ($this->model->delete($id)) {
                 audit_log('proyek.delete', ['id' => $id]);
                 $_SESSION['success'] = 'Proyek berhasil dihapus.';

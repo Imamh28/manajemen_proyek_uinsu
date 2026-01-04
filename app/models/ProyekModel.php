@@ -1,6 +1,8 @@
 <?php
 // app/models/ProyekModel.php
 
+require_once __DIR__ . '/PenjadwalanModel.php';
+
 class ProyekModel
 {
     public function __construct(private PDO $pdo) {}
@@ -231,10 +233,7 @@ class ProyekModel
         return $st->execute([':s' => $status, ':id' => $id]);
     }
 
-    /**
-     * STATUS INTERAKTIF:
-     * panggil ini dari controller progres/tahapan saat pertama kali ada progres berjalan.
-     */
+    /** panggil ini dari controller progres/tahapan saat pertama kali ada progres berjalan. */
     public function ensureStarted(string $id): void
     {
         $st = $this->pdo->prepare("UPDATE proyek SET status='Berjalan' WHERE id_proyek=:id AND status='Menunggu'");
@@ -247,5 +246,229 @@ class ProyekModel
         $st = $this->pdo->prepare("SELECT 1 FROM proyek WHERE id_proyek=:id AND karyawan_id_pic_sales=:k LIMIT 1");
         $st->execute([':id' => $idProyek, ':k' => $idKaryawan]);
         return (bool)$st->fetchColumn();
+    }
+
+    /**
+     * ✅ FINAL: Sinkronisasi status + current_tahapan_id proyek berdasarkan data relasi yang tersisa.
+     * Panggil ini SETIAP KALI ada perubahan relasi: jadwal_proyeks / tahapan_update_requests.
+     *
+     * Aturan utama:
+     * - Jika TIDAK ADA jadwal sama sekali -> proyek jadi Menunggu & current_tahapan_id = NULL
+     *   (ini memenuhi logika Anda saat semua jadwal & semua request sudah dihapus)
+     * - Jika ADA jadwal:
+     *   - status Berjalan jika ada jadwal mulai terisi, selain itu Menunggu
+     *   - current_tahapan_id = tahapan pertama yang belum selesai
+     *   - jika semua jadwal selesai, current_tahapan_id = next tahapan master yang belum dijadwalkan (jika ada), else NULL
+     *   - jika semua tahapan master sudah dijadwalkan & semua jadwal selesai -> status Selesai & current_tahapan_id NULL
+     * - Jika proyek LOCKED (Selesai/Dibatalkan): tidak mengubah status, tetapi current_tahapan_id dipaksa NULL.
+     *
+     * Catatan:
+     * - tahapan_update_requests tidak dijadikan sumber status utama (status utama = jadwal_proyeks),
+     *   tapi tetap dihitung untuk membantu mendeteksi kondisi orphan/mismatch bila diperlukan.
+     */
+    public function syncStateAfterRelationsChange(string $idProyek, array $lockedStatuses = ['Selesai', 'Dibatalkan']): void
+    {
+        $idProyek = strtoupper(trim($idProyek));
+        if ($idProyek === '') return;
+
+        // ambil status sekarang
+        $st0 = $this->pdo->prepare("SELECT status FROM proyek WHERE id_proyek = :p LIMIT 1");
+        $st0->execute([':p' => $idProyek]);
+        $curStatus = (string)($st0->fetchColumn() ?: '');
+        if ($curStatus === '') return;
+
+        // kalau proyek locked -> jangan utak-atik status, tapi current harus NULL
+        if (in_array($curStatus, $lockedStatuses, true)) {
+            $up = $this->pdo->prepare("UPDATE proyek SET current_tahapan_id = NULL WHERE id_proyek = :p");
+            $up->execute([':p' => $idProyek]);
+            return;
+        }
+
+        // hitung jadwal yang tersisa
+        $stJ = $this->pdo->prepare("SELECT COUNT(*) FROM jadwal_proyeks WHERE proyek_id_proyek = :p");
+        $stJ->execute([':p' => $idProyek]);
+        $jadwalCount = (int)($stJ->fetchColumn() ?? 0);
+
+        // hitung requests (untuk deteksi mismatch / orphan)
+        $reqCount = 0;
+        try {
+            $stR = $this->pdo->prepare("SELECT COUNT(*) FROM tahapan_update_requests WHERE proyek_id_proyek = :p");
+            $stR->execute([':p' => $idProyek]);
+            $reqCount = (int)($stR->fetchColumn() ?? 0);
+        } catch (Throwable $e) {
+            $reqCount = 0;
+        }
+
+        // ✅ KUNCI LOGIKA ANDA:
+        // Jika semua jadwal hilang, proyek WAJIB kembali Menunggu & current NULL.
+        // (Walaupun request masih tersisa/orphan, status proyek tetap harus reset)
+        if ($jadwalCount === 0) {
+            $up0 = $this->pdo->prepare("
+                UPDATE proyek
+                   SET status = 'Menunggu',
+                       current_tahapan_id = NULL
+                 WHERE id_proyek = :p
+            ");
+            $up0->execute([':p' => $idProyek]);
+            return;
+        }
+
+        // status dasar: berjalan jika ada jadwal yang sudah mulai
+        $stS = $this->pdo->prepare("
+            SELECT 1
+              FROM jadwal_proyeks
+             WHERE proyek_id_proyek = :p
+               AND mulai IS NOT NULL AND mulai <> ''
+             LIMIT 1
+        ");
+        $stS->execute([':p' => $idProyek]);
+        $hasStarted = (bool)$stS->fetchColumn();
+
+        $newStatus = $hasStarted ? 'Berjalan' : 'Menunggu';
+
+        // cek apakah semua selesai & seluruh master sudah dijadwalkan
+        $masterCnt = (int)($this->pdo->query("SELECT COUNT(*) FROM daftar_tahapans")->fetchColumn() ?? 0);
+
+        $stSched = $this->pdo->prepare("
+            SELECT COUNT(DISTINCT daftar_tahapans_id_tahapan)
+              FROM jadwal_proyeks
+             WHERE proyek_id_proyek = :p
+        ");
+        $stSched->execute([':p' => $idProyek]);
+        $schedCnt = (int)($stSched->fetchColumn() ?? 0);
+
+        $stUnf = $this->pdo->prepare("
+            SELECT COUNT(*)
+              FROM jadwal_proyeks
+             WHERE proyek_id_proyek = :p
+               AND (selesai IS NULL OR selesai = '')
+        ");
+        $stUnf->execute([':p' => $idProyek]);
+        $unfinishedCnt = (int)($stUnf->fetchColumn() ?? 0);
+
+        if ($masterCnt > 0 && $schedCnt === $masterCnt && $unfinishedCnt === 0) {
+            $newStatus = 'Selesai';
+        }
+
+        // current tahapan:
+        $newCur = null;
+
+        if ($newStatus === 'Selesai') {
+            $newCur = null;
+        } else {
+            // ambil tahapan pertama yang belum selesai (ini juga mencakup "belum mulai")
+            $stCur = $this->pdo->prepare("
+                SELECT daftar_tahapans_id_tahapan
+                  FROM jadwal_proyeks
+                 WHERE proyek_id_proyek = :p
+                   AND (selesai IS NULL OR selesai = '')
+                 ORDER BY daftar_tahapans_id_tahapan ASC, id_jadwal ASC
+                 LIMIT 1
+            ");
+            $stCur->execute([':p' => $idProyek]);
+            $cur = (string)($stCur->fetchColumn() ?: '');
+
+            if ($cur !== '') {
+                $newCur = $cur;
+            } else {
+                // semua jadwal selesai, tapi bisa saja masih ada master yang belum dijadwalkan
+                $pm = new PenjadwalanModel($this->pdo);
+                $next = $pm->nextTahapanId($idProyek);
+                $newCur = $next ?: null;
+            }
+        }
+
+        $up = $this->pdo->prepare("
+            UPDATE proyek
+               SET status = :s,
+                   current_tahapan_id = :t
+             WHERE id_proyek = :p
+        ");
+        $up->execute([
+            ':s' => $newStatus,
+            ':t' => $newCur,
+            ':p' => $idProyek,
+        ]);
+    }
+
+    // ==== DELETE GUARD + CASCADE (manual) ====
+
+    public function relationsSummary(string $id): array
+    {
+        $out = [
+            'jadwal' => 0,
+            'pembayaran' => 0,
+            'tahapan_requests' => 0,
+        ];
+
+        // jadwal_proyeks
+        $st = $this->pdo->prepare("SELECT COUNT(*) FROM jadwal_proyeks WHERE proyek_id_proyek = :id");
+        $st->execute([':id' => $id]);
+        $out['jadwal'] = (int)($st->fetchColumn() ?? 0);
+
+        // pembayarans
+        $st = $this->pdo->prepare("SELECT COUNT(*) FROM pembayarans WHERE proyek_id_proyek = :id");
+        $st->execute([':id' => $id]);
+        $out['pembayaran'] = (int)($st->fetchColumn() ?? 0);
+
+        // tahapan_update_requests
+        try {
+            $st = $this->pdo->prepare("SELECT COUNT(*) FROM tahapan_update_requests WHERE proyek_id_proyek = :id");
+            $st->execute([':id' => $id]);
+            $out['tahapan_requests'] = (int)($st->fetchColumn() ?? 0);
+        } catch (Throwable $e) {
+            $out['tahapan_requests'] = 0;
+        }
+
+        return $out;
+    }
+
+    public function hasRelations(string $id): bool
+    {
+        $r = $this->relationsSummary($id);
+        return ($r['jadwal'] + $r['pembayaran'] + $r['tahapan_requests']) > 0;
+    }
+
+    /**
+     * Force delete proyek + relasi (manual cascade).
+     * $opt: ['jadwal'=>bool,'pembayaran'=>bool,'tahapan_requests'=>bool]
+     */
+    public function deleteCascade(string $id, array $opt): bool
+    {
+        $delJ = !empty($opt['jadwal']);
+        $delP = !empty($opt['pembayaran']);
+        $delT = !empty($opt['tahapan_requests']);
+
+        $this->pdo->beginTransaction();
+        try {
+            if ($delJ) {
+                $st = $this->pdo->prepare("DELETE FROM jadwal_proyeks WHERE proyek_id_proyek = :id");
+                $st->execute([':id' => $id]);
+            }
+
+            if ($delP) {
+                $st = $this->pdo->prepare("DELETE FROM pembayarans WHERE proyek_id_proyek = :id");
+                $st->execute([':id' => $id]);
+            }
+
+            if ($delT) {
+                try {
+                    $st = $this->pdo->prepare("DELETE FROM tahapan_update_requests WHERE proyek_id_proyek = :id");
+                    $st->execute([':id' => $id]);
+                } catch (Throwable $e) {
+                    // ignore jika tabel tidak ada
+                }
+            }
+
+            // terakhir: proyek
+            $st = $this->pdo->prepare("DELETE FROM proyek WHERE id_proyek = :id");
+            $ok = $st->execute([':id' => $id]);
+
+            $this->pdo->commit();
+            return $ok;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
     }
 }

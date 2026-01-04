@@ -1,41 +1,133 @@
 <?php
-// views/(shared|role)/dashboard.php
-// --- ambil PDO global dari init.php ---
-/** @var PDO $pdo */
+// app/views/dashboard.php
+
+$__DASH_DEBUG__ = (isset($_GET['debug']) && $_GET['debug'] == '1');
+if ($__DASH_DEBUG__) {
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+}
+
+// Pastikan user login (lebih aman, walau router biasanya sudah nge-guard)
+require_once __DIR__ . '/../middleware/auth.php';
+
+// Ambil BASE_URL dari init.php kalau ada
+if (!isset($BASE_URL) || !is_string($BASE_URL) || trim($BASE_URL) === '') {
+    // fallback minimal (kalau suatu saat dipanggil tanpa init)
+    $BASE_URL = '/manajemen_proyek_uinsu/app/';
+}
+$BASE_URL = rtrim($BASE_URL, '/') . '/';
+
+// === ambil PDO ala dashboard lama ===
+/** @var PDO|null $pdo */
 $pdo = $GLOBALS['pdo'] ?? null;
-if (!$pdo) {
+
+// fallback kalau global pdo belum diset
+if (!$pdo instanceof PDO) {
+    require_once __DIR__ . '/../config/database.php'; // menghasilkan $pdo
+    if (isset($pdo) && $pdo instanceof PDO) {
+        $GLOBALS['pdo'] = $pdo;
+    }
+}
+
+if (!$pdo instanceof PDO) {
     echo '<div class="alert alert-danger m-3">Koneksi DB tidak tersedia.</div>';
     return;
 }
 
-// ===== hitung proyek =====
-$totalProyek     = (int)$pdo->query("SELECT COUNT(*) FROM proyek")->fetchColumn();
-$proyekBerjalan  = (int)$pdo->query("SELECT COUNT(*) FROM proyek WHERE status='Berjalan'")->fetchColumn();
-$proyekSelesai   = (int)$pdo->query("SELECT COUNT(*) FROM proyek WHERE status='Selesai'")->fetchColumn();
+$rupiah = function ($n): string {
+    $n = (int)round((float)$n);
+    return 'Rp ' . number_format($n, 0, ',', '.');
+};
 
-// ===== hitung pembayaran yang masih "Belum Lunas" per jenis =====
-$qCount = fn(string $jenis) => (int)$pdo
-    ->query("SELECT COUNT(*) FROM pembayarans WHERE jenis_pembayaran='$jenis' AND status_pembayaran='Belum Lunas'")
-    ->fetchColumn();
+// =====================
+// HITUNG METRIK
+// =====================
+$totalProyek = 0;
+$proyekBerjalan = 0;
+$proyekSelesai = 0;
+$totalRevenue = 0;
 
-$menungguDP        = $qCount('DP');
-$menungguTermin40  = $qCount('Termin');     // MOS 40% kamu mapping ke TERMIN
-$menungguPelunasan = $qCount('Pelunasan');
+$menungguPelunasan = 0;
+$pelunasan = 0;
 
-// (opsional) kalau mau filter sesuai user/role, contoh untuk PM hanya proyek yang dia PIC site:
-// $user = $_SESSION['user']['id'] ?? null;
-// if ($user && ($_SESSION['user']['role_id'] ?? '') === 'RL002') {
-//   $totalProyek    = (int)$pdo->query("SELECT COUNT(*) FROM proyek WHERE karyawan_id_pic_site=".$pdo->quote($user))->fetchColumn();
-//   $proyekBerjalan = (int)$pdo->query("SELECT COUNT(*) FROM proyek WHERE status='Berjalan' AND karyawan_id_pic_site=".$pdo->quote($user))->fetchColumn();
-//   $proyekSelesai  = (int)$pdo->query("SELECT COUNT(*) FROM proyek WHERE status='Selesai' AND karyawan_id_pic_site=".$pdo->quote($user))->fetchColumn();
-//   // dan pembayaran bisa di-join ke proyek + filter karyawan_id_pic_site = $user
-// }
+$totalBiayaAll = 0;
+$totalPaidAll  = 0;
+$totalSisaAll  = 0;
+
+$__dashError = null;
+
+try {
+    // 1. Total Proyek
+    $totalProyek = (int)$pdo->query("SELECT COUNT(*) FROM proyek")->fetchColumn();
+
+    // 2. Proyek Berjalan
+    $st = $pdo->prepare("SELECT COUNT(*) FROM proyek WHERE status = :s");
+    $st->execute([':s' => 'Berjalan']);
+    $proyekBerjalan = (int)$st->fetchColumn();
+
+    // 3. Proyek Selesai
+    $st = $pdo->prepare("SELECT COUNT(*) FROM proyek WHERE status = :s");
+    $st->execute([':s' => 'Selesai']);
+    $proyekSelesai = (int)$st->fetchColumn();
+
+    // 4. Total Revenue (Σ total_biaya_proyek)
+    $totalRevenue = (int)round((float)$pdo->query("SELECT COALESCE(SUM(total_biaya_proyek),0) FROM proyek")->fetchColumn());
+
+    // 5 & 6. Menunggu Pelunasan & Pelunasan berdasarkan Σ pembayaran per proyek
+    // Menunggu Pelunasan: paid_total > 0 dan paid_total < total_biaya_proyek
+    // Pelunasan: paid_total >= total_biaya_proyek
+    $sql = "
+        SELECT
+            SUM(CASE WHEN x.paid_total > 0 AND x.paid_total < x.total_biaya THEN 1 ELSE 0 END) AS menunggu_pelunasan,
+            SUM(CASE WHEN x.total_biaya > 0 AND x.paid_total >= x.total_biaya THEN 1 ELSE 0 END) AS pelunasan,
+            COALESCE(SUM(x.total_biaya),0) AS total_biaya_all,
+            COALESCE(SUM(x.paid_total),0)  AS total_paid_all
+        FROM (
+            SELECT
+                p.id_proyek,
+                COALESCE(p.total_biaya_proyek, 0) AS total_biaya,
+                COALESCE(SUM(pb.total_pembayaran), 0) AS paid_total
+            FROM proyek p
+            LEFT JOIN pembayarans pb ON pb.proyek_id_proyek = p.id_proyek
+            GROUP BY p.id_proyek, p.total_biaya_proyek
+        ) x
+    ";
+    $row = $pdo->query($sql)->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $menungguPelunasan = (int)($row['menunggu_pelunasan'] ?? 0);
+    $pelunasan         = (int)($row['pelunasan'] ?? 0);
+
+    $totalBiayaAll = (int)round((float)($row['total_biaya_all'] ?? 0));
+    $totalPaidAll  = (int)round((float)($row['total_paid_all'] ?? 0));
+    $totalSisaAll  = max(0, $totalBiayaAll - $totalPaidAll);
+} catch (Throwable $e) {
+    $__dashError = $e->getMessage();
+}
 ?>
 
 <div class="page-content-wrapper">
-    <!-- start page content-->
     <div class="page-content">
-        <?php include_once __DIR__ . '/../partials/alert.php'; ?>
+
+        <?php include __DIR__ . '/../partials/alert.php'; ?>
+
+        <?php if ($__DASH_DEBUG__): ?>
+            <div class="alert alert-info">
+                <strong>DEBUG Dashboard:</strong><br>
+                File: <?= htmlspecialchars(__FILE__) ?><br>
+                DB: <?= htmlspecialchars((string)($pdo->query("SELECT DATABASE()")->fetchColumn() ?? '')) ?><br>
+                Role: <?= htmlspecialchars((string)($_SESSION['user']['role_id'] ?? '')) ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($__dashError): ?>
+            <div class="alert alert-danger">
+                <strong>Dashboard gagal memuat data.</strong><br>
+                <?= htmlspecialchars($__dashError) ?><br>
+                <?php if (!$__DASH_DEBUG__): ?>
+                    <small>Coba buka dengan <code>&debug=1</code> untuk melihat detail.</small>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
         <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-4">
             <div class="col">
@@ -66,7 +158,7 @@ $menungguPelunasan = $qCount('Pelunasan');
                                 <h3 class="mb-0 fs-6">Proyek Berjalan</h3>
                             </div>
                             <div class="ms-auto widget-icon-small text-white bg-gradient-warning">
-                                <ion-icon name="build-outline"></ion-icon>
+                                <ion-icon name="walk-outline"></ion-icon>
                             </div>
                         </div>
                         <div class="d-flex align-items-center mt-1">
@@ -105,15 +197,15 @@ $menungguPelunasan = $qCount('Pelunasan');
                     <div class="card-body ps-4">
                         <div class="d-flex align-items-start gap-2">
                             <div>
-                                <h3 class="mb-0 fs-6">Menunggu Pembayaran DP</h3>
+                                <h3 class="mb-0 fs-6">Total Revenue</h3>
                             </div>
-                            <div class="ms-auto widget-icon-small text-white bg-gradient-danger">
-                                <ion-icon name="hourglass-outline"></ion-icon>
+                            <div class="ms-auto widget-icon-small text-white bg-gradient-info">
+                                <ion-icon name="cash-outline"></ion-icon>
                             </div>
                         </div>
                         <div class="d-flex align-items-center mt-1">
                             <div>
-                                <h1 class="mb-3"><?= number_format($menungguDP, 0, ',', '.') ?></h1>
+                                <h1 class="mb-3"><?= $rupiah($totalPaidAll) ?></h1>
                             </div>
                         </div>
                     </div>
@@ -127,7 +219,7 @@ $menungguPelunasan = $qCount('Pelunasan');
                     <div class="card-body ps-4">
                         <div class="d-flex align-items-start gap-2">
                             <div>
-                                <h3 class="mb-0 fs-6">Menunggu Pembayaran MOS 40%</h3>
+                                <h3 class="mb-0 fs-6">Menunggu Pelunasan</h3>
                             </div>
                             <div class="ms-auto widget-icon-small text-white bg-gradient-danger">
                                 <ion-icon name="time-outline"></ion-icon>
@@ -135,7 +227,7 @@ $menungguPelunasan = $qCount('Pelunasan');
                         </div>
                         <div class="d-flex align-items-center mt-1">
                             <div>
-                                <h1 class="mb-3"><?= number_format($menungguTermin40, 0, ',', '.') ?></h1>
+                                <h1 class="mb-3"><?= number_format($menungguPelunasan, 0, ',', '.') ?></h1>
                             </div>
                         </div>
                     </div>
@@ -147,15 +239,15 @@ $menungguPelunasan = $qCount('Pelunasan');
                     <div class="card-body ps-4">
                         <div class="d-flex align-items-start gap-2">
                             <div>
-                                <h3 class="mb-0 fs-6">Menunggu Pelunasan</h3>
+                                <h3 class="mb-0 fs-6">Pelunasan</h3>
                             </div>
-                            <div class="ms-auto widget-icon-small text-white bg-gradient-danger">
-                                <ion-icon name="alert-circle-outline"></ion-icon>
+                            <div class="ms-auto widget-icon-small text-white bg-gradient-success">
+                                <ion-icon name="wallet-outline"></ion-icon>
                             </div>
                         </div>
                         <div class="d-flex align-items-center mt-1">
                             <div>
-                                <h1 class="mb-3"><?= number_format($menungguPelunasan, 0, ',', '.') ?></h1>
+                                <h1 class="mb-3"><?= number_format($pelunasan, 0, ',', '.') ?></h1>
                             </div>
                         </div>
                     </div>
@@ -163,8 +255,5 @@ $menungguPelunasan = $qCount('Pelunasan');
             </div>
         </div>
 
-        <!--end row-->
     </div>
-    <!-- end page content-->
 </div>
-<!--end page content wrapper-->

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/PenjadwalanModel.php';
+require_once __DIR__ . '/../models/ProyekModel.php';
 require_once __DIR__ . '/../helpers/Audit.php';
 require_once __DIR__ . '/../utils/csrf.php';
 require_once __DIR__ . '/../utils/roles.php';
@@ -12,13 +13,15 @@ require_once __DIR__ . '/../helpers/Notify.php';
 class PenjadwalanController
 {
     private PenjadwalanModel $model;
+    private ProyekModel $proyekModel;
 
     private array $lockedProjectStatuses = ['Selesai', 'Dibatalkan'];
 
     public function __construct(private PDO $pdo, private string $baseUrl)
     {
-        $this->model   = new PenjadwalanModel($pdo);
-        $this->baseUrl = rtrim($baseUrl, '/') . '/';
+        $this->model       = new PenjadwalanModel($pdo);
+        $this->proyekModel = new ProyekModel($pdo);
+        $this->baseUrl     = rtrim($baseUrl, '/') . '/';
     }
 
     private function currentKaryawanId(): string
@@ -205,12 +208,15 @@ class PenjadwalanController
             if ($ok) {
                 $this->ensureProjectStarted($d['proyek_id_proyek']);
 
-                // ✅ set current_tahapan_id ke tahapan yang baru dibuat jadwalnya
+                // set current_tahapan_id ke tahapan yang baru dibuat jadwalnya
                 $st = $this->pdo->prepare("UPDATE proyek SET current_tahapan_id = :t WHERE id_proyek = :p");
                 $st->execute([':t' => $autoTahap, ':p' => $d['proyek_id_proyek']]);
 
-                // ✅ recalc status jadwal
+                // recalc status jadwal
                 $this->model->recalcStatusForProject($d['proyek_id_proyek']);
+
+                // ✅ FINAL: sync status proyek + current tahapan berdasarkan kondisi terbaru
+                $this->proyekModel->syncStateAfterRelationsChange($d['proyek_id_proyek'], $this->lockedProjectStatuses);
 
                 $this->pdo->commit();
 
@@ -291,8 +297,11 @@ class PenjadwalanController
 
         try {
             if ($this->model->update($id, $d)) {
-                // ✅ recalc status jadwal
+                // recalc status jadwal
                 $this->model->recalcStatusForProject($pid);
+
+                // ✅ FINAL: sync proyek
+                $this->proyekModel->syncStateAfterRelationsChange($pid, $this->lockedProjectStatuses);
 
                 audit_log('jadwal.update', ['id' => $id]);
                 $_SESSION['success'] = 'Jadwal berhasil diperbarui.';
@@ -347,8 +356,16 @@ class PenjadwalanController
         }
 
         try {
+            $this->pdo->beginTransaction();
+
             if ($this->model->delete($id)) {
+                // recalc status jadwal
                 $this->model->recalcStatusForProject($pid);
+
+                // ✅ FINAL: sync proyek (ini yang Anda butuhkan saat jadwal dihapus)
+                $this->proyekModel->syncStateAfterRelationsChange($pid, $this->lockedProjectStatuses);
+
+                $this->pdo->commit();
 
                 audit_log('jadwal.delete', ['id' => $id]);
                 $_SESSION['success'] = 'Jadwal berhasil dihapus.';
@@ -360,9 +377,11 @@ class PenjadwalanController
                     'actor_id'  => $actorKid,
                 ]);
             } else {
+                $this->pdo->rollBack();
                 $_SESSION['error'] = 'Gagal menghapus jadwal.';
             }
         } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             $_SESSION['error'] = 'Gagal menghapus jadwal: ' . $e->getMessage();
         }
 
@@ -430,7 +449,7 @@ class PenjadwalanController
             }
         }
 
-        // ✅ aturan linear & tidak overlap
+        // aturan linear & tidak overlap
         if ($pid !== '' && empty($err['plan_mulai']) && empty($err['plan_selesai']) && !empty($d['plan_mulai']) && !empty($d['plan_selesai'])) {
 
             // store: tidak boleh buat jadwal baru kalau masih ada yang belum selesai
@@ -440,7 +459,6 @@ class PenjadwalanController
                 } else {
                     $last = $this->model->lastScheduleByTahapan($pid);
                     if ($last && !empty($last['plan_selesai'])) {
-                        // aturan non-overlap yang tegas: mulai > plan_selesai sebelumnya
                         if (strtotime($d['plan_mulai']) <= strtotime((string)$last['plan_selesai'])) {
                             $err['plan_mulai'] = 'Plan mulai harus setelah plan selesai jadwal sebelumnya (' . $last['daftar_tahapans_id_tahapan'] . ' selesai plan: ' . $last['plan_selesai'] . ').';
                         }

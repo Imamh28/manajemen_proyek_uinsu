@@ -1,7 +1,7 @@
 <?php
 // app/views/admin/pembayaran/edit.php
 // from controller:
-// $pembayaran, $proyekList, $jenisEnum, $statusEnum, $BASE_URL, $__updErr, $__updOld, $PROJECT_META_JSON, $ONLY_PROJECT
+// $pembayaran, $proyekList, $jenisEnum, $BASE_URL, $__updErr, $__updOld, $PROJECT_META_JSON, $ONLY_PROJECT
 
 $val = function ($k, $def = '') use ($__updOld, $pembayaran) {
     return htmlspecialchars($__updOld[$k] ?? ($pembayaran[$k] ?? $def));
@@ -99,16 +99,6 @@ $hasProjects = !empty($proyekList);
                         <label class="form-label">Tanggal Bayar</label>
                         <input type="date" name="tanggal_bayar" required class="form-control <?= isset($__updErr['tanggal_bayar']) ? 'is-invalid' : '' ?>" value="<?= $val('tanggal_bayar') ?>">
                         <div class="invalid-feedback"><?= $__updErr['tanggal_bayar'] ?? 'Wajib & valid.' ?></div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Status</label>
-                        <select name="status_pembayaran" required class="form-select <?= isset($__updErr['status_pembayaran']) ? 'is-invalid' : '' ?>">
-                            <?php foreach ($statusEnum as $s): ?>
-                                <option value="<?= $s ?>" <?= ($val('status_pembayaran') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div class="invalid-feedback"><?= $__updErr['status_pembayaran'] ?? 'Wajib dipilih.' ?></div>
                     </div>
 
                     <div class="col-md-6">

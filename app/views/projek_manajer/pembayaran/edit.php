@@ -1,7 +1,7 @@
 <?php
-// app/views/admin/pembayaran/edit.php
+// app/views/projek_manajer/pembayaran/edit.php
 // from controller:
-// $pembayaran, $proyekList, $jenisEnum, $statusEnum, $BASE_URL, $__updErr, $__updOld, $PROJECT_META_JSON, $ONLY_PROJECT
+// $pembayaran, $proyekList, $jenisEnum, $BASE_URL, $__updErr, $__updOld, $PROJECT_META_JSON, $ONLY_PROJECT
 
 $val = function ($k, $def = '') use ($__updOld, $pembayaran) {
     return htmlspecialchars($__updOld[$k] ?? ($pembayaran[$k] ?? $def));
@@ -101,16 +101,6 @@ $hasProjects = !empty($proyekList);
                         <div class="invalid-feedback"><?= $__updErr['tanggal_bayar'] ?? 'Wajib & valid.' ?></div>
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Status</label>
-                        <select name="status_pembayaran" required class="form-select <?= isset($__updErr['status_pembayaran']) ? 'is-invalid' : '' ?>">
-                            <?php foreach ($statusEnum as $s): ?>
-                                <option value="<?= $s ?>" <?= ($val('status_pembayaran') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div class="invalid-feedback"><?= $__updErr['status_pembayaran'] ?? 'Wajib dipilih.' ?></div>
-                    </div>
-
                     <div class="col-md-6">
                         <label class="form-label">Bukti Pembayaran (opsional: ganti)</label>
                         <input type="file" name="bukti_pembayaran" accept=".jpg,.jpeg,.png,.heic" class="form-control <?= isset($__updErr['bukti_pembayaran']) ? 'is-invalid' : '' ?>">
@@ -208,8 +198,6 @@ $hasProjects = !empty($proyekList);
                     const total = parseInt(m.total || 0, 10) || 0;
                     let paid = parseInt(m.paid || 0, 10) || 0;
 
-                    // EDIT MODE: “paid” di meta termasuk record ini,
-                    // jadi untuk validasi kita harus exclude CURRENT_PAYMENT.total jika proyeknya sama.
                     if (window.CURRENT_PAYMENT && window.CURRENT_PAYMENT.proyek_id === pid) {
                         paid = Math.max(0, paid - (parseInt(window.CURRENT_PAYMENT.total || 0, 10) || 0));
                     }

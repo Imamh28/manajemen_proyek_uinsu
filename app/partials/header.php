@@ -52,6 +52,6 @@
 <link href="<?= $BASE_URL ?>assets/css/header-colors.css" rel="stylesheet" />
 
 <!-- Icon in Tab Browser -->
-<link rel="icon" type="image/png" href="<?= $BASE_URL ?>assets/images/logo-icon-2.png">
+<link rel="icon" type="image/png" href="<?= $BASE_URL ?>assets/images/logo-icon.png">
 
 <title>Dashboard - <?= $APP_NAME ?></title>

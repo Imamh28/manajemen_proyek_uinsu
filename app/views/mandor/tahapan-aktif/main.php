@@ -93,7 +93,7 @@ if (!empty($STEPS)) {
                     <h5 class="card-title mb-2">Tahapan Proyek: <?= e($CURRENT_PROJECT) ?></h5>
 
                     <?php if (!empty($STEPS)): ?>
-                        <form method="POST" action="<?= e($BASE_URL) ?>index.php?r=tahapan-aktif/update" class="mt-2">
+                        <form method="POST" action="<?= e($BASE_URL) ?>index.php?r=tahapan-aktif/update" enctype="multipart/form-data" class="mt-2">
                             <?= csrf_input(); ?>
                             <input type="hidden" name="proyek_id_proyek" value="<?= e($CURRENT_PROJECT) ?>">
 
@@ -186,7 +186,7 @@ if (!empty($STEPS)) {
                             </div>
 
                             <div class="row mt-3 g-2">
-                                <div class="col-md-8">
+                                <div class="col-md-12">
                                     <input
                                         type="text"
                                         name="catatan"
@@ -194,6 +194,19 @@ if (!empty($STEPS)) {
                                         placeholder="Catatan (opsional)"
                                         value="<?= e($catatanOld) ?>"
                                         <?= $hasEligible ? '' : 'disabled' ?>>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Bukti Foto Pengerjaan (Wajib)</label>
+                                        <input type="file" name="bukti_foto" class="form-control" accept=".jpg,.jpeg,.png,.heic" required>
+                                        <div class="form-text">Format: JPG/JPEG/PNG/HEIC (maks 8MB)</div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Bukti Dokumen (Wajib)</label>
+                                        <input type="file" name="bukti_dokumen" class="form-control" accept=".pdf" required>
+                                        <div class="form-text">Format: PDF (maks 10MB)</div>
+                                    </div>
                                 </div>
                                 <div class="col-md-4 d-flex gap-2">
                                     <button class="btn btn-success w-100" <?= $hasEligible ? '' : 'disabled' ?>>

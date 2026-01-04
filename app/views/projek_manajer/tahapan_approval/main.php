@@ -28,7 +28,10 @@
                                 <th>Pengusul</th>
                                 <th>Diajukan</th>
                                 <th>Catatan Mandor</th>
+                                <th>Bukti Foto</th>
+                                <th>Bukti Dokumen</th>
                                 <th>Aksi</th>
+                                <th>Hapus</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -40,7 +43,23 @@
                                         <td><?= htmlspecialchars($r['requested_by_name']) ?></td>
                                         <td><?= htmlspecialchars($r['requested_at']) ?></td>
                                         <td><?= htmlspecialchars($r['request_note'] ?? '-') ?></td>
-                                        <td class="d-flex gap-2">
+                                        <td>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                                href="<?= $BASE_URL ?>index.php?r=tahapan-approval/file&id=<?= (int)$r['id'] ?>&kind=foto"
+                                                target="_blank">Lihat Foto</a>
+
+                                            <a class="btn btn-sm btn-outline-secondary"
+                                                href="<?= $BASE_URL ?>index.php?r=tahapan-approval/file&id=<?= (int)$r['id'] ?>&kind=foto&download=1">Unduh Foto</a>
+                                        </td>
+                                        <td>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                                href="<?= $BASE_URL ?>index.php?r=tahapan-approval/file&id=<?= (int)$r['id'] ?>&kind=dokumen"
+                                                target="_blank">Lihat Dokumen</a>
+
+                                            <a class="btn btn-sm btn-outline-secondary"
+                                                href="<?= $BASE_URL ?>index.php?r=tahapan-approval/file&id=<?= (int)$r['id'] ?>&kind=dokumen&download=1">Unduh Dokumen</a>
+                                        </td>
+                                        <td class="d-flex flex-wrap gap-2">
                                             <form method="POST" action="<?= $BASE_URL ?>index.php?r=tahapan-approval/approve" class="d-flex gap-2">
                                                 <?= csrf_input(); ?>
                                                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
@@ -48,6 +67,7 @@
                                                     placeholder="Catatan reviewer (opsional)" maxlength="250" style="width:220px">
                                                 <button class="btn btn-sm btn-success">Setujui</button>
                                             </form>
+
                                             <form method="POST" action="<?= $BASE_URL ?>index.php?r=tahapan-approval/reject" class="d-flex gap-2">
                                                 <?= csrf_input(); ?>
                                                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
@@ -56,11 +76,20 @@
                                                 <button class="btn btn-sm btn-outline-danger">Tolak</button>
                                             </form>
                                         </td>
+                                        <td>
+                                            <form method="POST"
+                                                action="<?= $BASE_URL ?>index.php?r=tahapan-approval/delete-request"
+                                                onsubmit="return confirm('Yakin ingin menghapus request ini? File bukti juga akan ikut dihapus.');">
+                                                <?= csrf_input(); ?>
+                                                <input type="hidden" name="hapus_id" value="<?= (int)$r['id'] ?>">
+                                                <button class="btn btn-sm btn-outline-dark">Hapus</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <?php endforeach;
                             else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center">Tidak ada pengajuan.</td>
+                                    <td colspan="9" class="text-center">Tidak ada pengajuan.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -84,6 +113,7 @@
                                 <th>Reviewer</th>
                                 <th>Catatan Mandor</th>
                                 <th>Catatan Reviewer</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -97,11 +127,20 @@
                                         <td><?= htmlspecialchars($r['reviewed_by_name'] ?? '-') ?></td>
                                         <td><?= htmlspecialchars($r['request_note'] ?? '-') ?></td>
                                         <td><?= htmlspecialchars($r['review_note'] ?? '-') ?></td>
+                                        <td>
+                                            <form method="POST"
+                                                action="<?= $BASE_URL ?>index.php?r=tahapan-approval/delete-request"
+                                                onsubmit="return confirm('Yakin ingin menghapus riwayat request ini? File bukti juga akan ikut dihapus.');">
+                                                <?= csrf_input(); ?>
+                                                <input type="hidden" name="hapus_id" value="<?= (int)$r['id'] ?>">
+                                                <button class="btn btn-sm btn-outline-danger">Hapus</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <?php endforeach;
                             else: ?>
                                 <tr>
-                                    <td colspan="8" class="text-center">Belum ada riwayat.</td>
+                                    <td colspan="9" class="text-center">Belum ada riwayat.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

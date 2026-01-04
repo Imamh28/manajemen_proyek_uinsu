@@ -80,9 +80,12 @@ $catAlias = [1 => 'Operasional', 2 => 'Data Master'];
 ?>
 <aside class="sidebar-wrapper" data-simplebar="true">
     <div class="sidebar-header">
-        <div><img src="<?= $BASE_URL ?>assets/images/logo-icon-2.png" class="logo-icon" alt="logo icon"></div>
+        <div><img src="<?= $BASE_URL ?>assets/images/logo-icon.png" class="logo-icon" alt="logo icon"></div>
         <div>
-            <h1 class="logo-text">Manajemen</h1>
+            <h1 class="logo-text">
+                <span class="logo-name">CV Graha Raya</span>
+                <span class="logo-sub">Consultant</span>
+            </h1>
         </div>
     </div>
 

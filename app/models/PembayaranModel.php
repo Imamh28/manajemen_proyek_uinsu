@@ -9,13 +9,31 @@ class PembayaranModel
      * Ambil daftar pembayaran.
      * - Jika $picSalesKaryawanId = null => tampilkan semua
      * - Jika ada nilainya => hanya pembayaran dari proyek yang PIC Sales-nya user tsb
+     *
+     * ✅ status_pembayaran_auto dihitung dari:
+     *    SUM(total_pembayaran) per proyek dibanding total_biaya_proyek (bukan tanggal bayar)
      */
     public function all(string $q = '', ?string $picSalesKaryawanId = null): array
     {
-        $sql = "SELECT pb.*, pr.nama_proyek
-                  FROM pembayarans pb
-             LEFT JOIN proyek pr ON pb.proyek_id_proyek = pr.id_proyek
-                 WHERE 1=1";
+        $sql = "
+            SELECT
+                pb.*,
+                pr.nama_proyek,
+                CASE
+                    WHEN COALESCE(pr.total_biaya_proyek,0) > 0
+                         AND COALESCE(pr_sum.paid_total,0) >= COALESCE(pr.total_biaya_proyek,0)
+                    THEN 'Lunas'
+                    ELSE 'Belum Lunas'
+                END AS status_pembayaran_auto
+            FROM pembayarans pb
+            LEFT JOIN proyek pr ON pb.proyek_id_proyek = pr.id_proyek
+            LEFT JOIN (
+                SELECT proyek_id_proyek, COALESCE(SUM(total_pembayaran),0) AS paid_total
+                FROM pembayarans
+                GROUP BY proyek_id_proyek
+            ) pr_sum ON pr_sum.proyek_id_proyek = pr.id_proyek
+            WHERE 1=1
+        ";
         $bind = [];
 
         if ($picSalesKaryawanId !== null && $picSalesKaryawanId !== '') {
@@ -27,8 +45,8 @@ class PembayaranModel
             $sql .= " AND (
                         pb.id_pem_bayaran LIKE :q
                         OR pr.nama_proyek LIKE :q
-                        OR pb.status_pembayaran LIKE :q
                         OR pb.jenis_pembayaran LIKE :q
+                        OR pb.status_pembayaran LIKE :q
                      )";
             $bind[':q'] = "%{$q}%";
         }
@@ -66,7 +84,7 @@ class PembayaranModel
             ':total'  => (float)$d['total_pembayaran'],
             ':jt'     => $d['tanggal_jatuh_tempo'],
             ':tb'     => $d['tanggal_bayar'],
-            ':status' => $d['status_pembayaran'],
+            ':status' => $d['status_pembayaran'], // akan disinkronkan lagi via syncStatusByProject
             ':bukti'  => $d['bukti_pembayaran'],
             ':prj'    => $d['proyek_id_proyek'],
         ]);
@@ -96,7 +114,7 @@ class PembayaranModel
             ':total'  => (float)$d['total_pembayaran'],
             ':jt'     => $d['tanggal_jatuh_tempo'],
             ':tb'     => $d['tanggal_bayar'],
-            ':status' => $d['status_pembayaran'],
+            ':status' => $d['status_pembayaran'], // akan disinkronkan lagi via syncStatusByProject
             ':bukti'  => $d['bukti_pembayaran'],
             ':prj'    => $d['proyek_id_proyek'],
         ]);
@@ -121,11 +139,6 @@ class PembayaranModel
             ->fetchAll(PDO::FETCH_COLUMN) ?: [];
     }
 
-    /**
-     * Dropdown proyek untuk form pembayaran.
-     * - Jika $picSalesKaryawanId = null => semua proyek
-     * - Jika ada => hanya proyek milik PIC Sales tsb
-     */
     public function projects(?string $picSalesKaryawanId = null): array
     {
         $sql = "SELECT id_proyek, nama_proyek FROM proyek WHERE 1=1";
@@ -143,10 +156,6 @@ class PembayaranModel
         return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    /**
-     * Proyek + meta untuk live validation:
-     * total_biaya_proyek dan paid_total (sum total_pembayaran) per proyek.
-     */
     public function projectsWithMeta(?string $picSalesKaryawanId = null): array
     {
         $sql = "SELECT pr.id_proyek,
@@ -185,12 +194,12 @@ class PembayaranModel
                 'Total'         => $r['total_pembayaran'] ?? '',
                 'Jatuh Tempo'   => $r['tanggal_jatuh_tempo'] ?? '',
                 'Tanggal Bayar' => $r['tanggal_bayar'] ?? '',
-                'Status'        => $r['status_pembayaran'] ?? '',
+                // ✅ pakai status otomatis, bukan manual
+                'Status'        => $r['status_pembayaran_auto'] ?? ($r['status_pembayaran'] ?? ''),
             ];
         }, $rows);
     }
 
-    /** Ambil total biaya proyek */
     public function projectTotalBiaya(string $proyekId): int
     {
         $st = $this->pdo->prepare("SELECT total_biaya_proyek FROM proyek WHERE id_proyek = :id LIMIT 1");
@@ -199,10 +208,6 @@ class PembayaranModel
         return (int)($v ?? 0);
     }
 
-    /**
-     * Hitung akumulasi total_pembayaran untuk sebuah proyek.
-     * Dihitung dari SEMUA record (Belum Lunas + Lunas) agar tidak bisa overbooking.
-     */
     public function sumTotalPembayaranByProyek(string $proyekId, ?string $excludePaymentId = null): int
     {
         $sql = "SELECT COALESCE(SUM(total_pembayaran), 0)
@@ -220,5 +225,24 @@ class PembayaranModel
         $sum = (float)($st->fetchColumn() ?? 0);
 
         return (int) round($sum);
+    }
+
+    /**
+     * ✅ FINAL: Sinkronkan status_pembayaran untuk SEMUA pembayaran dalam 1 proyek.
+     * Status proyek lunas ditentukan dari: SUM(total_pembayaran) >= total_biaya_proyek
+     * (bukan tanggal bayar, cocok DP/Termin multi pembayaran)
+     */
+    public function syncStatusByProject(string $proyekId): void
+    {
+        $proyekId = trim($proyekId);
+        if ($proyekId === '') return;
+
+        $total = $this->projectTotalBiaya($proyekId);
+        $paid  = $this->sumTotalPembayaranByProyek($proyekId, null);
+
+        $status = ($total > 0 && $paid >= $total) ? 'Lunas' : 'Belum Lunas';
+
+        $st = $this->pdo->prepare("UPDATE pembayarans SET status_pembayaran = :s WHERE proyek_id_proyek = :p");
+        $st->execute([':s' => $status, ':p' => $proyekId]);
     }
 }

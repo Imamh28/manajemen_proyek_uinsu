@@ -1,14 +1,12 @@
 <?php
-// Set nama session khusus (opsional, untuk isolasi)
 if (session_status() === PHP_SESSION_NONE) {
-    // Tentukan apakah HTTPS
     $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 
     session_set_cookie_params([
-        'lifetime' => 0,        // sampai browser ditutup
+        'lifetime' => 0,
         'path'     => '/',
-        'domain'   => '',       // biarkan default
-        'secure'   => $isHttps, // kirim cookie hanya via HTTPS jika tersedia
+        'domain'   => '',
+        'secure'   => $isHttps,
         'httponly' => true,
         'samesite' => 'Lax'
     ]);

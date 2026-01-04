@@ -101,34 +101,50 @@ ion-icon {
     box-shadow: none;
 }
 
-
 .sidebar-wrapper .sidebar-header {
     width: 260px;
-    height: 65px;
+    height: 65px;                 /* samakan dengan .top-header */
     display: flex;
     align-items: center;
     position: fixed;
     top: 0;
-    bottom: 0;
-    padding: 0 15px;
+    left: 0;
+    padding: 0 15px;              /* biar center rapi */
     z-index: 5;
     background-color: #ffffff;
     border-right: 1px solid #e2e3e4;
-    border-bottom: 0px solid #e4e4e4;
-    transition: all .2s;
+    border-bottom: 1px solid #e4e4e4;
+    box-sizing: border-box;
 }
 
 .sidebar-wrapper .sidebar-header .logo-icon {
-    width: 30px;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex: 0 0 auto;
 }
 
 .sidebar-wrapper .sidebar-header .logo-text {
-    font-size: 22px;
-    margin-left: 10px;
-    margin-bottom: 0;
-    letter-spacing: 1px;
-    color: #923eb9;
+    margin: 0 0 0 12px;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+    letter-spacing: 0;
+    font-weight: 800;
 }
+
+/* Gradient 2 warna yang kamu minta */
+.sidebar-wrapper .sidebar-header .logo-text .logo-name,
+.sidebar-wrapper .sidebar-header .logo-text .logo-sub {
+    background: linear-gradient(9deg, #2e348e 50%, #ea7c1c 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* ukuran biar aman muat di tinggi 65px */
+.sidebar-wrapper .sidebar-header .logo-text .logo-name { font-size: 17px; }
+.sidebar-wrapper .sidebar-header .logo-text .logo-sub  { font-size: 12.5px; font-weight: 700; }
 
 .toggle-icon {
     display: flex;
@@ -158,8 +174,8 @@ ion-icon {
     display: -webkit-box;
     display: -ms-flexbox;
     display: flex;
-    padding: 10px;
-    margin-top: 60px;
+    padding: 10px; /* hilangkan padding kiri/kanan */
+    margin-top: 65px; /* HARUS sama dengan tinggi .sidebar-header */
     -webkit-box-orient: vertical;
     -webkit-box-direction: normal;
     -ms-flex-direction: column;
@@ -194,7 +210,7 @@ ion-icon {
     display: flex;
     align-items: center;
     justify-content: left;
-    padding: 6px 10px;
+    padding: 10px 15px; /* pindahkan padding ke link */
     font-size: 16px;
     color: #5f5f5f;
     outline-width: 0;

@@ -104,9 +104,6 @@ class TahapanApprovalController
 
             if ($r = $st->fetch(PDO::FETCH_ASSOC)) {
                 $proyekId = (string)($r['proyek_id_proyek'] ?? '');
-                if ($proyekId !== '') {
-                    $this->proyekModel->ensureStarted($proyekId);
-                }
 
                 notif_event($this->pdo, 'tahapan_approved', [
                     'proyek_id'    => $proyekId,
@@ -185,6 +182,135 @@ class TahapanApprovalController
         }
 
         header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+        exit;
+    }
+
+    /** Hapus request (admin/pm) dan otomatis sync proyek. */
+    public function deleteRequest(): void
+    {
+        require_roles(['RL001', 'RL002'], $this->baseUrl);
+
+        if (!csrf_verify($_POST['_csrf'] ?? '')) {
+            $_SESSION['error'] = 'Token tidak valid.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $id = (int)($_POST['hapus_id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['error'] = 'ID request tidak valid.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $st = $this->pdo->prepare("
+            SELECT proyek_id_proyek, bukti_foto, bukti_dokumen
+              FROM tahapan_update_requests
+             WHERE id = :id
+             LIMIT 1
+        ");
+        $st->execute([':id' => $id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            $_SESSION['error'] = 'Data request tidak ditemukan.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $pid  = (string)($row['proyek_id_proyek'] ?? '');
+        $foto = (string)($row['bukti_foto'] ?? '');
+        $doc  = (string)($row['bukti_dokumen'] ?? '');
+
+        try {
+            $this->pdo->beginTransaction();
+
+            $del = $this->pdo->prepare("DELETE FROM tahapan_update_requests WHERE id = :id");
+            $del->execute([':id' => $id]);
+
+            if ($pid !== '') {
+                $this->proyekModel->syncStateAfterRelationsChange($pid, ['Selesai', 'Dibatalkan']);
+            }
+
+            $this->pdo->commit();
+
+            foreach ([$foto, $doc] as $rel) {
+                $rel = ltrim((string)$rel, '/');
+                if ($rel !== '' && str_starts_with($rel, 'uploads/tahapan/')) {
+                    $abs = __DIR__ . '/../' . $rel;
+                    if (is_file($abs)) @unlink($abs);
+                }
+            }
+
+            $_SESSION['success'] = 'Request berhasil dihapus.';
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            $_SESSION['error'] = 'Gagal menghapus request: ' . $e->getMessage();
+        }
+
+        header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+        exit;
+    }
+
+    public function file(): void
+    {
+        require_roles(['RL001', 'RL002'], $this->baseUrl);
+
+        $id = (int)($_GET['id'] ?? 0);
+        $kind = trim($_GET['kind'] ?? ''); // foto | dokumen
+        $download = (($_GET['download'] ?? '') === '1');
+
+        if ($id <= 0 || !in_array($kind, ['foto', 'dokumen'], true)) {
+            $_SESSION['error'] = 'Permintaan file tidak valid.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $st = $this->pdo->prepare("SELECT bukti_foto, bukti_dokumen FROM tahapan_update_requests WHERE id = :id LIMIT 1");
+        $st->execute([':id' => $id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            $_SESSION['error'] = 'Data tidak ditemukan.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $rel = $kind === 'foto' ? (string)($row['bukti_foto'] ?? '') : (string)($row['bukti_dokumen'] ?? '');
+        if ($rel === '') {
+            $_SESSION['error'] = 'File tidak tersedia.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $rel = ltrim($rel, '/');
+
+        if (!str_starts_with($rel, 'uploads/tahapan/')) {
+            $_SESSION['error'] = 'Akses file ditolak.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $abs = __DIR__ . '/../' . $rel;
+        if (!is_file($abs)) {
+            $_SESSION['error'] = 'File tidak ditemukan di server.';
+            header("Location: {$this->baseUrl}index.php?r=tahapan-approval");
+            exit;
+        }
+
+        $mime = mime_content_type($abs) ?: '';
+        if ($mime === '') {
+            $ext = strtolower(pathinfo($abs, PATHINFO_EXTENSION));
+            $mime = ($ext === 'pdf') ? 'application/pdf' : 'application/octet-stream';
+        }
+
+        $filename = basename($abs);
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . filesize($abs));
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
+
+        readfile($abs);
         exit;
     }
 }

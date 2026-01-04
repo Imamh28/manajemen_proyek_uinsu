@@ -1,7 +1,7 @@
 <?php
 // app/views/admin/pembayaran/main.php
 // from controller:
-// $pembayarans, $proyekList, $jenisEnum, $statusEnum, $BASE_URL, $EXISTING_IDS_JSON, $PROJECT_META_JSON, $ONLY_PROJECT
+// $pembayarans, $proyekList, $jenisEnum, $BASE_URL, $EXISTING_IDS_JSON, $PROJECT_META_JSON, $ONLY_PROJECT
 
 $__err = $_SESSION['form_errors']['pembayaran_store'] ?? [];
 $__old = $_SESSION['form_old']['pembayaran_store'] ?? [];
@@ -103,7 +103,7 @@ $hasProjects = !empty($proyekList);
                     value="<?= htmlspecialchars($__old['total_pembayaran'] ?? '') ?>" placeholder="Rp">
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">Tanggal Jatuh Tempo</label>
                 <input type="date" name="tanggal_jatuh_tempo" <?= $hasProjects ? 'required' : '' ?>
                     class="form-control <?= isset($__err['tanggal_jatuh_tempo']) ? 'is-invalid' : '' ?>"
@@ -111,25 +111,12 @@ $hasProjects = !empty($proyekList);
                 <div class="invalid-feedback"><?= $__err['tanggal_jatuh_tempo'] ?? 'Wajib & valid.' ?></div>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">Tanggal Bayar</label>
                 <input type="date" name="tanggal_bayar" <?= $hasProjects ? 'required' : '' ?>
                     class="form-control <?= isset($__err['tanggal_bayar']) ? 'is-invalid' : '' ?>"
                     value="<?= htmlspecialchars($__old['tanggal_bayar'] ?? '') ?>" <?= $hasProjects ? '' : 'disabled' ?>>
                 <div class="invalid-feedback"><?= $__err['tanggal_bayar'] ?? 'Wajib & valid.' ?></div>
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Status</label>
-                <select name="status_pembayaran" <?= $hasProjects ? 'required' : '' ?>
-                    class="form-select <?= isset($__err['status_pembayaran']) ? 'is-invalid' : '' ?>"
-                    <?= $hasProjects ? '' : 'disabled' ?>>
-                    <option value="" disabled <?= empty($__old['status_pembayaran']) ? 'selected' : '' ?>>Pilih Status...</option>
-                    <?php foreach ($statusEnum as $s): ?>
-                        <option value="<?= $s ?>" <?= (($__old['status_pembayaran'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="invalid-feedback"><?= $__err['status_pembayaran'] ?? 'Wajib dipilih.' ?></div>
             </div>
 
             <div class="col-md-8">
@@ -178,7 +165,6 @@ $hasProjects = !empty($proyekList);
                                 <th>Total</th>
                                 <th>Jatuh Tempo</th>
                                 <th>Bayar</th>
-                                <th>Status</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -193,8 +179,6 @@ $hasProjects = !empty($proyekList);
                                         <td><?= 'Rp' . number_format((float)$r['total_pembayaran'], 0, ',', '.') ?></td>
                                         <td><?= htmlspecialchars($r['tanggal_jatuh_tempo']) ?></td>
                                         <td><?= htmlspecialchars($r['tanggal_bayar']) ?></td>
-                                        <td><span class="badge bg-<?= ($r['status_pembayaran'] === 'Lunas') ? 'success' : 'warning' ?>">
-                                                <?= htmlspecialchars($r['status_pembayaran']) ?></span></td>
                                         <td>
                                             <div class="d-flex order-actions">
                                                 <a class="ms-3" href="<?= $BASE_URL ?>index.php?r=pembayaran/edit&id=<?= urlencode($r['id_pem_bayaran']) ?>">
@@ -210,7 +194,7 @@ $hasProjects = !empty($proyekList);
                                 <?php endforeach;
                             else: ?>
                                 <tr>
-                                    <td colspan="10" class="text-center">Belum ada data.</td>
+                                    <td colspan="9" class="text-center">Belum ada data.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -392,7 +376,6 @@ $hasProjects = !empty($proyekList);
                     const pid = getProjectId();
                     const info = pid ? projectInfo(pid) : null;
 
-                    // kalau belum pilih proyek (dan bukan hidden), biarkan required validator yang bekerja
                     if (!pid || !info) {
                         if (limitHint) limitHint.textContent = '';
                         return;
@@ -424,11 +407,7 @@ $hasProjects = !empty($proyekList);
                         return;
                     }
 
-                    // valid
-                    if (sub.classList.contains('is-invalid')) {
-                        // jangan hapus error lain jika ada, tapi untuk kasus ini aman
-                        setValid(sub);
-                    }
+                    if (sub.classList.contains('is-invalid')) setValid(sub);
 
                     if (limitHint) {
                         const maxSub = maxSubFromRemaining(info.remaining, 0.10);
@@ -436,7 +415,6 @@ $hasProjects = !empty($proyekList);
                     }
                 }
 
-                // format & kalkulasi rupiah otomatis
                 const recalc = () => {
                     if (!sub) return;
                     const d = digitsOnly(sub.value);
@@ -514,7 +492,6 @@ $hasProjects = !empty($proyekList);
                     if (msg) setInvalid(el, msg);
                     else setValid(el);
 
-                    // ekstra: validasi batas sisa tagihan setiap kali sub_total / proyek berubah
                     if (el.name === 'sub_total' || el.name === 'proyek_id_proyek') {
                         validateRemaining();
                     }
@@ -550,7 +527,6 @@ $hasProjects = !empty($proyekList);
                     }
                 });
 
-                // init
                 updateHints();
                 validateRemaining();
             });

@@ -46,7 +46,7 @@ class PembayaranController
             $u['karyawan_id'] ?? null,
             $u['karyawan_id_karyawan'] ?? null,
             $u['employee_id'] ?? null,
-            $u['id'] ?? null, // fallback terakhir
+            $u['id'] ?? null,
         ];
 
         foreach ($candidates as $c) {
@@ -58,7 +58,6 @@ class PembayaranController
                 $st->execute([':id' => $id]);
                 if ($st->fetchColumn()) return $id;
             } catch (Throwable $e) {
-                // lanjut kandidat berikutnya
             }
         }
         return '';
@@ -101,7 +100,21 @@ class PembayaranController
         return max(0, $sub);
     }
 
-    /** GET /pembayaran : list + form tambah */
+    /**
+     * ✅ STATUS OTOMATIS (bukan input manual):
+     * ditentukan dari paid_after vs total_biaya_proyek
+     */
+    private function statusOtomatis(string $proyekId, ?string $excludePaymentId, int $incomingTotal): string
+    {
+        $projectTotal = $this->model->projectTotalBiaya($proyekId);
+        $sumExisting  = $this->model->sumTotalPembayaranByProyek($proyekId, $excludePaymentId);
+
+        $paidAfter = $sumExisting + $incomingTotal;
+
+        return ($projectTotal > 0 && $paidAfter >= $projectTotal) ? 'Lunas' : 'Belum Lunas';
+    }
+
+    /** GET /pembayaran */
     public function index(): void
     {
         require_roles(['RL001', 'RL002'], $this->baseUrl);
@@ -121,10 +134,8 @@ class PembayaranController
         // proyek + meta (total proyek & akumulasi pembayaran) untuk live validation
         $proyekList = $this->model->projectsWithMeta($karyawanId);
 
-        // jika hanya 1 proyek → tidak perlu select
         $ONLY_PROJECT = (count($proyekList) === 1) ? $proyekList[0] : null;
 
-        // meta JSON untuk JS
         $metaMap = [];
         foreach ($proyekList as $p) {
             $pid = (string)($p['id_proyek'] ?? '');
@@ -137,9 +148,8 @@ class PembayaranController
         }
         $PROJECT_META_JSON = json_encode($metaMap, JSON_UNESCAPED_UNICODE);
 
-        $BASE_URL   = $this->baseUrl;
-        $jenisEnum  = ['DP', 'Termin', 'Pelunasan'];
-        $statusEnum = ['Belum Lunas', 'Lunas'];
+        $BASE_URL  = $this->baseUrl;
+        $jenisEnum = ['DP', 'Termin', 'Pelunasan'];
 
         $EXISTING_IDS_JSON = json_encode(
             array_values(array_unique(array_map('strval', $this->model->existingIds()))),
@@ -174,11 +184,12 @@ class PembayaranController
             'id_pem_bayaran'      => trim($_POST['id_pem_bayaran'] ?? ''),
             'jenis_pembayaran'    => trim($_POST['jenis_pembayaran'] ?? ''),
             'sub_total'           => $digits($_POST['sub_total'] ?? ''),
-            'pajak_pembayaran'    => $digits($_POST['pajak_pembayaran'] ?? ''),
-            'total_pembayaran'    => $digits($_POST['total_pembayaran'] ?? ''),
+            'pajak_pembayaran'    => '0',
+            'total_pembayaran'    => '0',
             'tanggal_jatuh_tempo' => trim($_POST['tanggal_jatuh_tempo'] ?? ''),
             'tanggal_bayar'       => trim($_POST['tanggal_bayar'] ?? ''),
-            'status_pembayaran'   => trim($_POST['status_pembayaran'] ?? ''),
+            // ✅ status otomatis, tidak dibaca dari POST
+            'status_pembayaran'   => 'Belum Lunas',
             'proyek_id_proyek'    => trim($_POST['proyek_id_proyek'] ?? ''),
             'bukti_pembayaran'    => null,
         ];
@@ -221,17 +232,7 @@ class PembayaranController
                 . 'Maks sub total (sebelum pajak 10%): ' . $this->rupiah($maxSub) . '.';
         }
 
-        foreach (
-            [
-                'id_pem_bayaran',
-                'jenis_pembayaran',
-                'sub_total',
-                'tanggal_jatuh_tempo',
-                'tanggal_bayar',
-                'status_pembayaran',
-                'proyek_id_proyek'
-            ] as $f
-        ) {
+        foreach (['id_pem_bayaran', 'jenis_pembayaran', 'sub_total', 'tanggal_jatuh_tempo', 'tanggal_bayar', 'proyek_id_proyek'] as $f) {
             if (($d[$f] ?? '') === '') $err[$f] = 'Wajib diisi.';
         }
 
@@ -271,16 +272,22 @@ class PembayaranController
         $buktiPath = $this->moveUpload($_FILES['bukti_pembayaran'], $d['id_pem_bayaran']);
         $d['bukti_pembayaran'] = $buktiPath;
 
+        // ✅ status otomatis berbasis total (bukan tanggal)
+        $d['status_pembayaran'] = $this->statusOtomatis($d['proyek_id_proyek'], null, (int)$total);
+
         try {
             $ok = $this->model->create($d);
             if ($ok) {
+                // ✅ sinkron semua record 1 proyek supaya status selalu akurat (termasuk jika ada edit/hapus nanti)
+                $this->model->syncStatusByProject($d['proyek_id_proyek']);
+
                 audit_log('pembayaran.create', [
                     'id' => $d['id_pem_bayaran'],
                     'proyek' => $d['proyek_id_proyek'],
                     'jenis' => $d['jenis_pembayaran'],
                     'total' => $d['total_pembayaran']
                 ]);
-                $_SESSION['success'] = 'Pembayaran berhasil ditambahkan.';
+                $_SESSION['success'] = 'Pembayaran berhasil ditambahkan. Status dihitung otomatis.';
 
                 notif_event($this->pdo, 'pembayaran_created', [
                     'id'        => $d['id_pem_bayaran'],
@@ -325,7 +332,6 @@ class PembayaranController
             exit;
         }
 
-        // SECURITY: pastikan pembayaran ini milik proyek user (PIC Sales)
         $pid = (string)($row['proyek_id_proyek'] ?? '');
         if (!$this->assertProjectOwnedByMe($pid, $karyawanId)) {
             mark_forbidden();
@@ -333,7 +339,6 @@ class PembayaranController
             return;
         }
 
-        // proyek + meta untuk JS
         $proyekList = $this->model->projectsWithMeta($karyawanId);
         $ONLY_PROJECT = (count($proyekList) === 1) ? $proyekList[0] : null;
 
@@ -352,7 +357,6 @@ class PembayaranController
         $BASE_URL   = $this->baseUrl;
         $pembayaran = $row;
         $jenisEnum  = ['DP', 'Termin', 'Pelunasan'];
-        $statusEnum = ['Belum Lunas', 'Lunas'];
 
         $__updErr = $_SESSION['form_errors']['pembayaran_update'] ?? [];
         $__updOld = $_SESSION['form_old']['pembayaran_update'] ?? [];
@@ -394,7 +398,6 @@ class PembayaranController
             exit;
         }
 
-        // SECURITY: pastikan pembayaran ini milik user
         $currentPid = (string)($row['proyek_id_proyek'] ?? '');
         if (!$this->assertProjectOwnedByMe($currentPid, $karyawanId)) {
             mark_forbidden();
@@ -407,11 +410,12 @@ class PembayaranController
         $d = [
             'jenis_pembayaran'    => trim($_POST['jenis_pembayaran'] ?? ''),
             'sub_total'           => $digits($_POST['sub_total'] ?? ''),
-            'pajak_pembayaran'    => $digits($_POST['pajak_pembayaran'] ?? ''),
-            'total_pembayaran'    => $digits($_POST['total_pembayaran'] ?? ''),
+            'pajak_pembayaran'    => '0',
+            'total_pembayaran'    => '0',
             'tanggal_jatuh_tempo' => trim($_POST['tanggal_jatuh_tempo'] ?? ''),
             'tanggal_bayar'       => trim($_POST['tanggal_bayar'] ?? ''),
-            'status_pembayaran'   => trim($_POST['status_pembayaran'] ?? ''),
+            // ✅ status otomatis
+            'status_pembayaran'   => 'Belum Lunas',
             'proyek_id_proyek'    => trim($_POST['proyek_id_proyek'] ?? ''),
             'bukti_pembayaran'    => $row['bukti_pembayaran'],
         ];
@@ -422,7 +426,6 @@ class PembayaranController
             $d['proyek_id_proyek'] = $allowedProjectIds[0];
         }
 
-        // SECURITY: user tidak boleh memindah ke proyek yang bukan miliknya
         if (!$this->assertProjectOwnedByMe($d['proyek_id_proyek'], $karyawanId)) {
             $_SESSION['error'] = 'Akses ditolak: hanya PIC Sales proyek yang boleh mengubah pembayaran.';
             header("Location: {$this->baseUrl}index.php?r=pembayaran/edit&id=" . urlencode($id));
@@ -454,16 +457,7 @@ class PembayaranController
                 . 'Maks sub total (sebelum pajak 10%): ' . $this->rupiah($maxSub) . '.';
         }
 
-        foreach (
-            [
-                'jenis_pembayaran',
-                'sub_total',
-                'tanggal_jatuh_tempo',
-                'tanggal_bayar',
-                'status_pembayaran',
-                'proyek_id_proyek'
-            ] as $f
-        ) {
+        foreach (['jenis_pembayaran', 'sub_total', 'tanggal_jatuh_tempo', 'tanggal_bayar', 'proyek_id_proyek'] as $f) {
             if (($d[$f] ?? '') === '') $err[$f] = 'Wajib diisi.';
         }
 
@@ -492,11 +486,18 @@ class PembayaranController
             $d['bukti_pembayaran'] = $this->moveUpload($_FILES['bukti_pembayaran'], $id);
         }
 
+        // ✅ status otomatis berbasis total (exclude record ini + incoming total)
+        $d['status_pembayaran'] = $this->statusOtomatis($d['proyek_id_proyek'], $id, (int)$total);
+
         try {
             $ok = $this->model->update($id, $d);
             if ($ok) {
+                // ✅ sync status untuk proyek lama & baru (kalau pindah proyek)
+                $this->model->syncStatusByProject($currentPid);
+                $this->model->syncStatusByProject($d['proyek_id_proyek']);
+
                 audit_log('pembayaran.update', ['id' => $id, 'proyek' => $d['proyek_id_proyek']]);
-                $_SESSION['success'] = 'Pembayaran berhasil diperbarui.';
+                $_SESSION['success'] = 'Pembayaran berhasil diperbarui. Status dihitung otomatis.';
 
                 notif_event($this->pdo, 'pembayaran_updated', [
                     'id'        => $id,
@@ -556,8 +557,12 @@ class PembayaranController
 
         try {
             $ok = $this->model->delete($id);
+
+            // ✅ sync status setelah delete supaya akurat
+            $this->model->syncStatusByProject($pid);
+
             audit_log('pembayaran.delete', ['id' => $id, 'proyek' => $pid]);
-            $_SESSION['success'] = $ok ? 'Pembayaran dihapus.' : 'Gagal menghapus.';
+            $_SESSION['success'] = $ok ? 'Pembayaran dihapus. Status disinkronkan otomatis.' : 'Gagal menghapus.';
 
             notif_event($this->pdo, 'pembayaran_deleted', [
                 'id'       => $id,

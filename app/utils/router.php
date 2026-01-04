@@ -6,19 +6,65 @@ require_once __DIR__ . '/../middleware/authorize.php';
 
 const DEFAULT_ROUTE = 'dashboard';
 
-/** Ambil path dari ?r=  */
+/**
+ * Fallback kalau canon_url belum ada di authorize.php
+ * Normalisasi URL menu menjadi format: /segmen[-segmen] tanpa trailing slash.
+ */
+if (!function_exists('canon_url')) {
+    function canon_url(string $u): string
+    {
+        $u = trim($u);
+        if ($u === '') return '/dashboard';
+
+        // pastikan mulai dari slash
+        if ($u[0] !== '/') $u = '/' . $u;
+
+        // rapikan slash ganda
+        $u = preg_replace('~/{2,}~', '/', $u);
+
+        // hapus trailing slash kecuali root "/"
+        if ($u !== '/' && str_ends_with($u, '/')) $u = rtrim($u, '/');
+
+        return strtolower($u);
+    }
+}
+
+/** Ambil path dari ?r= dan normalisasi */
 function _resolve_path(): string
 {
     $requested = $_GET['r'] ?? DEFAULT_ROUTE;
+
+    // decode jika ada %2F, dsb
+    $requested = urldecode((string)$requested);
+
+    // sanitasi karakter (boleh a-z 0-9 / _ -)
     $requested = strtolower(preg_replace('~[^a-z0-9/_-]+~', '', $requested));
-    $requested = $requested ?: DEFAULT_ROUTE;
+    $requested = trim($requested);
+
+    if ($requested === '') $requested = DEFAULT_ROUTE;
 
     $path = '/' . ltrim($requested, '/');
 
-    // alias: /tahapan_aktif -> /tahapan-aktif
-    if ($path === '/tahapan_aktif' || str_starts_with($path, '/tahapan_aktif/')) {
-        $path = str_replace('/tahapan_aktif', '/tahapan-aktif', $path);
+    // rapikan slash ganda
+    $path = preg_replace('~/{2,}~', '/', $path);
+
+    // alias kompatibilitas route lama (underscore -> hyphen untuk route tertentu)
+    $aliases = [
+        '/tahapan_aktif'     => '/tahapan-aktif',
+        '/tahapan_approval'  => '/tahapan-approval',
+    ];
+    foreach ($aliases as $from => $to) {
+        if ($path === $from || str_starts_with($path, $from . '/')) {
+            $path = $to . substr($path, strlen($from));
+            break;
+        }
     }
+
+    // hapus trailing slash kecuali "/"
+    if ($path !== '/' && str_ends_with($path, '/')) $path = rtrim($path, '/');
+
+    // default "/" -> "/dashboard"
+    if ($path === '/') $path = '/dashboard';
 
     return $path;
 }
@@ -30,7 +76,7 @@ function is_route(string $path, string $base): bool
 }
 
 /**
- * Menu guard untuk sub-route:
+ * Menu guard untuk sub-route (pakai segmen pertama):
  * /proyek/edit -> guard ke /proyek
  * /penjadwalan/detailproyek -> guard ke /penjadwalan
  */
@@ -44,7 +90,6 @@ function _guard_base(string $path): string
     $parts = explode('/', $trim);
     $first = $parts[0] ?? 'dashboard';
 
-    // first segment sudah cukup untuk semua: proyek, klien, karyawan, tahapan-aktif, tahapan-approval, dll
     return '/' . $first;
 }
 
@@ -57,26 +102,35 @@ function _seed_menu_urls_from_menus(): void
     $menus = $_SESSION['user']['menus'] ?? [];
     if (!$menus) return;
 
-    $norm = fn(string $u) => canon_url($u);
-    $urls = array_values(array_unique(array_filter(array_map(
-        fn($m) => isset($m['url']) ? $norm($m['url']) : null,
-        $menus
-    ))));
+    $urls = [];
+    foreach ($menus as $m) {
+        if (!isset($m['url'])) continue;
+        $urls[] = canon_url((string)$m['url']);
+    }
+
+    $urls = array_values(array_unique(array_filter($urls)));
 
     if (!in_array('/dashboard', $urls, true)) $urls[] = '/dashboard';
 
-    // alias untuk menjaga kompatibilitas menu lama
+    // alias agar menu lama tetap kompatibel
     if (in_array('/tahapan_aktif', $urls, true) && !in_array('/tahapan-aktif', $urls, true)) {
         $urls[] = '/tahapan-aktif';
+    }
+    if (in_array('/tahapan_approval', $urls, true) && !in_array('/tahapan-approval', $urls, true)) {
+        $urls[] = '/tahapan-approval';
     }
 
     $_SESSION['user']['menu_urls'] = $urls;
 }
 
-/** Tangani AKSI (POST/GET tanpa layout) */
+/**
+ * Tangani AKSI (POST/GET tanpa layout)
+ * Return true jika request sudah ditangani (controller sudah dipanggil / sudah redirect / sudah output).
+ */
 function handle_actions(string $BASE_URL): bool
 {
     $path = _resolve_path();
+
     if (!isset($_SESSION['user'])) return false;
 
     _seed_menu_urls_from_menus();
@@ -89,10 +143,22 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/KaryawanController.php';
         $c = new KaryawanController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/karyawan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/karyawan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/karyawan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
-        if ($path === '/karyawan/export' && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->exportCSV() || true;
+        if ($path === '/karyawan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/karyawan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/karyawan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
+        if ($path === '/karyawan/export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->exportCSV();
+            return true;
+        }
 
         return false;
     }
@@ -105,10 +171,22 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/KlienController.php';
         $c = new KlienController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/klien/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/klien/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/klien/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
-        if ($path === '/klien/export' && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->exportCSV() || true;
+        if ($path === '/klien/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/klien/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/klien/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
+        if ($path === '/klien/export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->exportCSV();
+            return true;
+        }
 
         return false;
     }
@@ -121,10 +199,22 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/TahapanController.php';
         $c = new TahapanController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/tahapan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/tahapan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/tahapan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
-        if ($path === '/tahapan/export' && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->exportCSV() || true;
+        if ($path === '/tahapan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/tahapan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/tahapan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
+        if ($path === '/tahapan/export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->exportCSV();
+            return true;
+        }
 
         return false;
     }
@@ -137,13 +227,26 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/ProyekController.php';
         $c = new ProyekController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/proyek/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/proyek/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/proyek/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
-        if ($path === '/proyek/export' && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->exportCSV() || true;
-
-        // endpoint opsional
-        if ($path === '/proyek/set-status' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->setStatus() || true;
+        if ($path === '/proyek/store'      && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/proyek/update'     && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/proyek/delete'     && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
+        if ($path === '/proyek/export'     && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->exportCSV();
+            return true;
+        }
+        if ($path === '/proyek/set-status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->setStatus();
+            return true;
+        }
 
         return false;
     }
@@ -156,10 +259,22 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/PembayaranController.php';
         $c = new PembayaranController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/pembayaran/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/pembayaran/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/pembayaran/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
-        if ($path === '/pembayaran/export' && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->exportCSV() || true;
+        if ($path === '/pembayaran/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/pembayaran/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/pembayaran/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
+        if ($path === '/pembayaran/export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->exportCSV();
+            return true;
+        }
 
         return false;
     }
@@ -172,9 +287,18 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/PenjadwalanController.php';
         $c = new PenjadwalanController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/penjadwalan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->store()  || true;
-        if ($path === '/penjadwalan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
-        if ($path === '/penjadwalan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->delete() || true;
+        if ($path === '/penjadwalan/store'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->store();
+            return true;
+        }
+        if ($path === '/penjadwalan/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+        if ($path === '/penjadwalan/delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->delete();
+            return true;
+        }
 
         return false;
     }
@@ -187,7 +311,16 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/TahapanAktifController.php';
         $c = new TahapanAktifController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/tahapan-aktif/update' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->update() || true;
+        if ($path === '/tahapan-aktif/update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->update();
+            return true;
+        }
+
+        // kalau kamu nanti punya endpoint file untuk bukti mandor, router siap (tidak fatal kalau method belum ada)
+        if ($path === '/tahapan-aktif/file' && $_SERVER['REQUEST_METHOD'] === 'GET' && method_exists($c, 'file')) {
+            $c->file();
+            return true;
+        }
 
         return false;
     }
@@ -200,19 +333,49 @@ function handle_actions(string $BASE_URL): bool
         require_once __DIR__ . '/../controllers/TahapanApprovalController.php';
         $c = new TahapanApprovalController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/tahapan-approval/approve' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->approve() || true;
-        if ($path === '/tahapan-approval/reject'  && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->reject()  || true;
+        if ($path === '/tahapan-approval/approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->approve();
+            return true;
+        }
+        if ($path === '/tahapan-approval/reject'  && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->reject();
+            return true;
+        }
+
+        if ($path === '/tahapan-approval/delete-request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->deleteRequest();
+            return true;
+        }
+
+        // ✅ endpoint file: index.php?r=tahapan-approval/file&id=123&kind=foto|dokumen
+        if ($path === '/tahapan-approval/file' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            if (method_exists($c, 'file')) {
+                $c->file();
+                return true;
+            }
+            // kalau method belum dibuat, biar jelas
+            http_response_code(500);
+            echo 'Method TahapanApprovalController::file() belum tersedia.';
+            return true;
+        }
 
         return false;
     }
 
     // === Notifications (open/readall)
+    // NOTE: ini biasanya tidak ada di menu_urls, tapi aman karena dipanggil via handle_actions sebelum dispatch.
     if (is_route($path, '/notify')) {
         require_once __DIR__ . '/../controllers/NotificationController.php';
         $c = new NotificationController($GLOBALS['pdo'], $BASE_URL);
 
-        if ($path === '/notify/readall' && $_SERVER['REQUEST_METHOD'] === 'POST') return (bool)$c->readAll() || true;
-        if ($path === '/notify/open'    && $_SERVER['REQUEST_METHOD'] === 'GET')  return (bool)$c->open()    || true;
+        if ($path === '/notify/readall' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $c->readAll();
+            return true;
+        }
+        if ($path === '/notify/open'    && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $c->open();
+            return true;
+        }
 
         return false;
     }
@@ -220,9 +383,15 @@ function handle_actions(string $BASE_URL): bool
     return false;
 }
 
-/** Dispatch VIEW (GET) */
+/**
+ * Dispatch VIEW (GET)
+ * Aman: jika index.php lupa memanggil handle_actions, dispatch_route juga akan coba menanganinya dulu.
+ */
 function dispatch_route(string $BASE_URL): void
 {
+    // kalau request action, handle dulu
+    if (handle_actions($BASE_URL)) return;
+
     $path = _resolve_path();
 
     if (!isset($_SESSION['user'])) {
@@ -240,11 +409,22 @@ function dispatch_route(string $BASE_URL): void
         $viewsRoot = __DIR__ . '/../views';
         $err403    = "$viewsRoot/error/403.php";
         if (is_file($err403)) include $err403;
-        else echo '<div class="container mt-5"><div class="alert alert-danger">403 — Akses ditolak.</div></div>';
+        else {
+            http_response_code(403);
+            echo '<div class="container mt-5"><div class="alert alert-danger">403 — Akses ditolak.</div></div>';
+        }
         return;
     }
 
-    // ====== Standard Controller Routes ======
+    if ($path === '/dashboard') {
+        $view = __DIR__ . '/../views/dashboard.php';
+        if (is_file($view)) {
+            include $view;
+            return;
+        }
+    }
+
+    // ====== Standard Controller Routes (VIEW) ======
 
     // Karyawan
     if (is_route($path, '/karyawan')) {
@@ -330,15 +510,16 @@ function dispatch_route(string $BASE_URL): void
     if (is_route($path, '/penjadwalan')) {
         require_once __DIR__ . '/../controllers/PenjadwalanController.php';
         $c = new PenjadwalanController($GLOBALS['pdo'], $BASE_URL);
-        if ($path === '/penjadwalan'                 && $_SERVER['REQUEST_METHOD'] === 'GET') {
+
+        if ($path === '/penjadwalan'                  && $_SERVER['REQUEST_METHOD'] === 'GET') {
             $c->index();
             return;
         }
-        if ($path === '/penjadwalan/edit'            && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($path === '/penjadwalan/edit'             && $_SERVER['REQUEST_METHOD'] === 'GET') {
             $c->editForm();
             return;
         }
-        if ($path === '/penjadwalan/detailproyek'    && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ($path === '/penjadwalan/detailproyek'     && $_SERVER['REQUEST_METHOD'] === 'GET') {
             $c->detailProyek();
             return;
         }
@@ -358,7 +539,7 @@ function dispatch_route(string $BASE_URL): void
         }
     }
 
-    // Persetujuan Tahapan
+    // Persetujuan Tahapan (PM/Admin)
     if (is_route($path, '/tahapan-approval')) {
         require_once __DIR__ . '/../controllers/TahapanApprovalController.php';
         $c = new TahapanApprovalController($GLOBALS['pdo'], $BASE_URL);
@@ -370,7 +551,7 @@ function dispatch_route(string $BASE_URL): void
 
     // ====== Fallback view by role ======
     $u = $_SESSION['user'] ?? [];
-    $roleId = (string)($u['role_id'] ?? ($u['role_id_role'] ?? ($u['role'] ?? ($u['id_role'] ?? ''))));
+    $roleId  = (string)($u['role_id'] ?? ($u['role_id_role'] ?? ($u['role'] ?? ($u['id_role'] ?? ''))));
     $roleDir = role_dir($roleId);
 
     $viewsRoot = __DIR__ . '/../views';
@@ -399,7 +580,10 @@ function dispatch_route(string $BASE_URL): void
     if (!$view) {
         $err404 = "$viewsRoot/error/404.php";
         if (is_file($err404)) include $err404;
-        else echo '<div class="container mt-5"><div class="alert alert-warning">404 — Halaman tidak ditemukan.</div></div>';
+        else {
+            http_response_code(404);
+            echo '<div class="container mt-5"><div class="alert alert-warning">404 — Halaman tidak ditemukan.</div></div>';
+        }
         return;
     }
 

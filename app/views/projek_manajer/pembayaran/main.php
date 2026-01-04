@@ -1,7 +1,7 @@
 <?php
-// app/views/admin/pembayaran/main.php
+// app/views/projek_manajer/pembayaran/main.php
 // from controller:
-// $pembayarans, $proyekList, $jenisEnum, $statusEnum, $BASE_URL, $EXISTING_IDS_JSON, $PROJECT_META_JSON, $ONLY_PROJECT
+// $pembayarans, $proyekList, $jenisEnum, $BASE_URL, $EXISTING_IDS_JSON, $PROJECT_META_JSON, $ONLY_PROJECT
 
 $__err = $_SESSION['form_errors']['pembayaran_store'] ?? [];
 $__old = $_SESSION['form_old']['pembayaran_store'] ?? [];
@@ -48,7 +48,6 @@ $hasProjects = !empty($proyekList);
                 <label class="form-label">Proyek</label>
 
                 <?php if (!empty($ONLY_PROJECT)): ?>
-                    <!-- jika hanya 1 proyek: auto -->
                     <input type="hidden" name="proyek_id_proyek" value="<?= htmlspecialchars($ONLY_PROJECT['id_proyek']) ?>">
                     <input type="text" class="form-control" value="<?= htmlspecialchars($ONLY_PROJECT['id_proyek'] . ' — ' . ($ONLY_PROJECT['nama_proyek'] ?? '')) ?>" readonly>
                 <?php else: ?>
@@ -119,19 +118,6 @@ $hasProjects = !empty($proyekList);
                 <div class="invalid-feedback"><?= $__err['tanggal_bayar'] ?? 'Wajib & valid.' ?></div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Status</label>
-                <select name="status_pembayaran" <?= $hasProjects ? 'required' : '' ?>
-                    class="form-select <?= isset($__err['status_pembayaran']) ? 'is-invalid' : '' ?>"
-                    <?= $hasProjects ? '' : 'disabled' ?>>
-                    <option value="" disabled <?= empty($__old['status_pembayaran']) ? 'selected' : '' ?>>Pilih Status...</option>
-                    <?php foreach ($statusEnum as $s): ?>
-                        <option value="<?= $s ?>" <?= (($__old['status_pembayaran'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="invalid-feedback"><?= $__err['status_pembayaran'] ?? 'Wajib dipilih.' ?></div>
-            </div>
-
             <div class="col-md-8">
                 <label class="form-label">Bukti Pembayaran</label>
                 <input type="file" name="bukti_pembayaran" <?= $hasProjects ? 'required' : '' ?> accept=".jpg,.jpeg,.png,.heic"
@@ -178,7 +164,6 @@ $hasProjects = !empty($proyekList);
                                 <th>Total</th>
                                 <th>Jatuh Tempo</th>
                                 <th>Bayar</th>
-                                <th>Status</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -193,8 +178,6 @@ $hasProjects = !empty($proyekList);
                                         <td><?= 'Rp' . number_format((float)$r['total_pembayaran'], 0, ',', '.') ?></td>
                                         <td><?= htmlspecialchars($r['tanggal_jatuh_tempo']) ?></td>
                                         <td><?= htmlspecialchars($r['tanggal_bayar']) ?></td>
-                                        <td><span class="badge bg-<?= ($r['status_pembayaran'] === 'Lunas') ? 'success' : 'warning' ?>">
-                                                <?= htmlspecialchars($r['status_pembayaran']) ?></span></td>
                                         <td>
                                             <div class="d-flex order-actions">
                                                 <a class="ms-3" href="<?= $BASE_URL ?>index.php?r=pembayaran/edit&id=<?= urlencode($r['id_pem_bayaran']) ?>">
@@ -210,7 +193,7 @@ $hasProjects = !empty($proyekList);
                                 <?php endforeach;
                             else: ?>
                                 <tr>
-                                    <td colspan="10" class="text-center">Belum ada data.</td>
+                                    <td colspan="9" class="text-center">Belum ada data.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -308,9 +291,7 @@ $hasProjects = !empty($proyekList);
                         const nav = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'];
                         if (nav.includes(ev.key) || ev.ctrlKey || ev.metaKey || ev.altKey) return;
 
-                        if (start < PFX.length) {
-                            payId.setSelectionRange(PFX.length, PFX.length);
-                        }
+                        if (start < PFX.length) payId.setSelectionRange(PFX.length, PFX.length);
 
                         if (ev.key.length === 1 && !/[0-9]/.test(ev.key)) {
                             ev.preventDefault();
@@ -332,8 +313,7 @@ $hasProjects = !empty($proyekList);
                     payId.addEventListener('paste', (ev) => {
                         ev.preventDefault();
                         let text = (ev.clipboardData || window.clipboardData).getData('text') || '';
-                        text = text.replace(/^pay/i, '');
-                        text = text.replace(/\D+/g, '');
+                        text = text.replace(/^pay/i, '').replace(/\D+/g, '');
 
                         const cur = payId.value || PFX;
                         const selStart = Math.max(PFX.length, payId.selectionStart ?? PFX.length);
@@ -392,7 +372,6 @@ $hasProjects = !empty($proyekList);
                     const pid = getProjectId();
                     const info = pid ? projectInfo(pid) : null;
 
-                    // kalau belum pilih proyek (dan bukan hidden), biarkan required validator yang bekerja
                     if (!pid || !info) {
                         if (limitHint) limitHint.textContent = '';
                         return;
@@ -424,11 +403,7 @@ $hasProjects = !empty($proyekList);
                         return;
                     }
 
-                    // valid
-                    if (sub.classList.contains('is-invalid')) {
-                        // jangan hapus error lain jika ada, tapi untuk kasus ini aman
-                        setValid(sub);
-                    }
+                    if (sub.classList.contains('is-invalid')) setValid(sub);
 
                     if (limitHint) {
                         const maxSub = maxSubFromRemaining(info.remaining, 0.10);
@@ -436,7 +411,6 @@ $hasProjects = !empty($proyekList);
                     }
                 }
 
-                // format & kalkulasi rupiah otomatis
                 const recalc = () => {
                     if (!sub) return;
                     const d = digitsOnly(sub.value);
@@ -467,7 +441,6 @@ $hasProjects = !empty($proyekList);
                     });
                 }
 
-                // reset
                 document.addEventListener('click', e => {
                     const b = e.target.closest('[data-reset-form]');
                     if (!b) return;
@@ -480,7 +453,6 @@ $hasProjects = !empty($proyekList);
                     if (limitHint) limitHint.textContent = '';
                 });
 
-                // live validate basic
                 form.querySelectorAll('input,select,textarea').forEach(el => {
                     el.addEventListener('input', debounce(() => validate(el), 200));
                     el.addEventListener('blur', () => validate(el));
@@ -514,13 +486,11 @@ $hasProjects = !empty($proyekList);
                     if (msg) setInvalid(el, msg);
                     else setValid(el);
 
-                    // ekstra: validasi batas sisa tagihan setiap kali sub_total / proyek berubah
                     if (el.name === 'sub_total' || el.name === 'proyek_id_proyek') {
                         validateRemaining();
                     }
                 }
 
-                // submit: normalisasi digits + final check remaining
                 form.addEventListener('submit', (e) => {
                     form.querySelectorAll('input,select,textarea').forEach(el => validate(el));
                     validateRemaining();
@@ -550,7 +520,6 @@ $hasProjects = !empty($proyekList);
                     }
                 });
 
-                // init
                 updateHints();
                 validateRemaining();
             });

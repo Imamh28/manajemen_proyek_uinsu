@@ -10,6 +10,49 @@ unset($_SESSION['form_errors']['proyek_store'], $_SESSION['form_old']['proyek_st
 
         <?php include __DIR__ . '/../../../partials/alert.php'; ?>
 
+        <?php
+        $__blocked = $_SESSION['delete_blocked_proyek'] ?? null;
+        unset($_SESSION['delete_blocked_proyek']);
+        ?>
+
+        <?php if ($__blocked && !empty($__blocked['id'])): ?>
+            <div class="alert alert-warning">
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <b>Hapus proyek diblokir</b> (<?= htmlspecialchars($__blocked['id']) ?>) karena masih punya relasi:
+                        Jadwal <b><?= (int)($__blocked['rel']['jadwal'] ?? 0) ?></b>,
+                        Pembayaran <b><?= (int)($__blocked['rel']['pembayaran'] ?? 0) ?></b>,
+                        Permintaan Tahapan <b><?= (int)($__blocked['rel']['tahapan_requests'] ?? 0) ?></b>.
+                    </div>
+
+                    <form method="POST" action="<?= $BASE_URL ?>index.php?r=proyek/delete" class="d-flex flex-wrap gap-2 align-items-center">
+                        <?= csrf_input(); ?>
+                        <input type="hidden" name="hapus_id" value="<?= htmlspecialchars($__blocked['id']) ?>">
+                        <input type="hidden" name="force" value="1">
+
+                        <label class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" name="del_jadwal" value="1" checked>
+                            <span class="form-check-label">Hapus jadwal</span>
+                        </label>
+
+                        <label class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" name="del_pembayaran" value="1" checked>
+                            <span class="form-check-label">Hapus pembayaran</span>
+                        </label>
+
+                        <label class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" name="del_requests" value="1" checked>
+                            <span class="form-check-label">Hapus permintaan tahapan</span>
+                        </label>
+
+                        <button class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus proyek beserta data terkait? Tindakan ini tidak dapat dibatalkan.')">
+                            Hapus Proyek + Data Terkait
+                        </button>
+                    </form>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
             <div class="breadcrumb-title pe-3">Operasional</div>
             <div class="ps-3">

@@ -75,6 +75,49 @@ class TahapanAktifController
         return (bool)$st->fetchColumn();
     }
 
+    private function ensureDir(string $absDir): void
+    {
+        if (!is_dir($absDir)) @mkdir($absDir, 0777, true);
+    }
+
+    private function saveUploadedFile(array $f, string $absDir, string $relPrefix, array $allowedExt, int $maxBytes, string $namePrefix): array
+    {
+        if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return ['error' => 'Upload gagal.'];
+        }
+
+        $ext = strtolower(pathinfo($f['name'] ?? '', PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExt, true)) {
+            return ['error' => 'Tipe file tidak valid: ' . strtoupper($ext)];
+        }
+
+        if (($f['size'] ?? 0) > $maxBytes) {
+            return ['error' => 'Ukuran file terlalu besar.'];
+        }
+
+        // mime check ringan (HEIC kadang kebaca octet-stream di windows)
+        $mime = mime_content_type($f['tmp_name'] ?? '') ?: '';
+        if ($ext === 'pdf') {
+            if (!str_contains($mime, 'pdf') && $mime !== 'application/octet-stream') {
+                return ['error' => 'Dokumen harus PDF (mime tidak cocok).'];
+            }
+        } else {
+            $okImg = str_starts_with($mime, 'image/') || $mime === 'application/octet-stream';
+            if (!$okImg) return ['error' => 'Foto harus berupa gambar.'];
+        }
+
+        $this->ensureDir($absDir);
+
+        $filename = $namePrefix . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $absPath  = rtrim($absDir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+
+        if (!move_uploaded_file($f['tmp_name'], $absPath)) {
+            return ['error' => 'Gagal menyimpan file.'];
+        }
+
+        return ['path' => rtrim($relPrefix, '/') . '/' . $filename];
+    }
+
     public function index(): void
     {
         require_roles(['RL003'], $this->baseUrl);
@@ -197,7 +240,6 @@ class TahapanAktifController
         }
 
         $steps = $this->m->stepsByProject($proyekId);
-
         $allowed = null;
         foreach ($steps as $s) {
             if (!empty($s['_eligible'])) {
@@ -212,8 +254,69 @@ class TahapanAktifController
             exit;
         }
 
+        // ✅ WAJIB upload foto + dokumen
+        if (empty($_FILES['bukti_foto']['name'] ?? '')) {
+            $_SESSION['error'] = 'Bukti foto pengerjaan wajib diunggah.';
+            header('Location: ' . $this->baseUrl . 'index.php?r=tahapan-aktif');
+            exit;
+        }
+        if (empty($_FILES['bukti_dokumen']['name'] ?? '')) {
+            $_SESSION['error'] = 'Bukti dokumen (PDF) wajib diunggah.';
+            header('Location: ' . $this->baseUrl . 'index.php?r=tahapan-aktif');
+            exit;
+        }
+
+        // lokasi sesuai permintaan Anda
+        $absFoto = __DIR__ . '/../uploads/tahapan/buktifoto';
+        $absDoc  = __DIR__ . '/../uploads/tahapan/buktidokumen';
+
+        // rel path disimpan di DB (konsisten seperti file lain: "uploads/...")
+        $relFotoPrefix = 'uploads/tahapan/buktifoto';
+        $relDocPrefix  = 'uploads/tahapan/buktidokumen';
+
+        // simpan foto
+        $safePrefix = 'TAHAP_' . preg_replace('~[^A-Za-z0-9]~', '', $proyekId) . '_' . preg_replace('~[^A-Za-z0-9]~', '', $idTahap);
+
+        $upFoto = $this->saveUploadedFile(
+            $_FILES['bukti_foto'],
+            $absFoto,
+            $relFotoPrefix,
+            ['jpg', 'jpeg', 'png', 'heic'],
+            8 * 1024 * 1024,
+            'FOTO_' . $safePrefix
+        );
+        if (!empty($upFoto['error'])) {
+            $_SESSION['error'] = 'Gagal upload foto: ' . $upFoto['error'];
+            header('Location: ' . $this->baseUrl . 'index.php?r=tahapan-aktif');
+            exit;
+        }
+
+        // simpan dokumen
+        $upDoc = $this->saveUploadedFile(
+            $_FILES['bukti_dokumen'],
+            $absDoc,
+            $relDocPrefix,
+            ['pdf'],
+            10 * 1024 * 1024,
+            'DOC_' . $safePrefix
+        );
+        if (!empty($upDoc['error'])) {
+            // hapus foto yg sudah tersimpan biar tidak yatim
+            @unlink(__DIR__ . '/../' . ltrim((string)$upFoto['path'], '/'));
+            $_SESSION['error'] = 'Gagal upload dokumen: ' . $upDoc['error'];
+            header('Location: ' . $this->baseUrl . 'index.php?r=tahapan-aktif');
+            exit;
+        }
+
         try {
-            $ok = $this->m->createRequest($proyekId, $idTahap, $mandorId, $note);
+            $ok = $this->m->createRequest(
+                $proyekId,
+                $idTahap,
+                $mandorId,
+                $note,
+                (string)$upFoto['path'],
+                (string)$upDoc['path']
+            );
 
             if ($ok) {
                 $this->proyekModel->ensureStarted($proyekId);
@@ -225,12 +328,17 @@ class TahapanAktifController
                     'who'       => $by,
                     'actor_id'  => $mandorId,
                 ]);
-            }
 
-            $_SESSION['success'] = $ok
-                ? 'Pengajuan dikirim. Menunggu persetujuan Project Manager.'
-                : 'Gagal mengirim pengajuan (mungkin masih ada pending sebelumnya).';
+                $_SESSION['success'] = 'Pengajuan dikirim. Menunggu persetujuan Project Manager.';
+            } else {
+                // hapus file karena request gagal (misal race condition pending)
+                @unlink(__DIR__ . '/../' . ltrim((string)$upFoto['path'], '/'));
+                @unlink(__DIR__ . '/../' . ltrim((string)$upDoc['path'], '/'));
+                $_SESSION['error'] = 'Gagal mengirim pengajuan (mungkin masih ada pending sebelumnya).';
+            }
         } catch (Throwable $e) {
+            @unlink(__DIR__ . '/../' . ltrim((string)$upFoto['path'], '/'));
+            @unlink(__DIR__ . '/../' . ltrim((string)$upDoc['path'], '/'));
             $_SESSION['error'] = 'Gagal mengirim pengajuan: ' . $e->getMessage();
         }
 
